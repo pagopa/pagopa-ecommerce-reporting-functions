@@ -37,7 +37,7 @@ parameters:
     default: true
 
 variables:
-  imageRepository: '$(IMAGE_REPOSITORY_NAME)'
+  imageRepository: '$(K8S_IMAGE_REPOSITORY_NAME)'
   nameSpace: '$(K8S_NAMESPACE)'
 
   ${{ if eq(parameters['ENV'], 'dev') }}:
