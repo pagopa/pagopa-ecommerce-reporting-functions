@@ -1,4 +1,4 @@
-package it.gov.pagopa.project;
+package it.pagopa.ecommerce.reporting;
 
 import com.microsoft.azure.functions.HttpResponseMessage;
 import com.microsoft.azure.functions.HttpStatus;

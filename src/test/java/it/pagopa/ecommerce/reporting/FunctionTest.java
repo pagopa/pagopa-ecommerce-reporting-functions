@@ -1,4 +1,4 @@
-package it.gov.pagopa.project;
+package it.pagopa.ecommerce.reporting;
 
 import com.microsoft.azure.functions.ExecutionContext;
 import com.microsoft.azure.functions.HttpRequestMessage;
@@ -11,7 +11,6 @@ import org.mockito.stubbing.Answer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Function;
 import java.util.logging.Logger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -24,10 +23,10 @@ import static org.mockito.Mockito.*;
  */
 public class FunctionTest {
     /**
-     * Unit test for HttpTriggerJava method.
+     * Unit test for TimerTriggerJava method.
      */
     @Test
-    public void testHttpTriggerJava() throws Exception {
+    public void testTimerTriggerJava() throws Exception {
         // Setup
         @SuppressWarnings("unchecked")
         final HttpRequestMessage<Optional<String>> req = mock(HttpRequestMessage.class);
