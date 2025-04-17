@@ -21,7 +21,7 @@ parameters:
     displayName: Run tests
     type: boolean
     default: false
-    
+
 resources:
   repositories:
     - repository: pagopaCommons
@@ -178,79 +178,3 @@ stages:
           - script: |
               echo "##vso[task.setvariable variable=version;isOutput=true]$(pomversion.next)"
             name: dockerTag
-
-
-  # Run test
-  - stage: test
-    # run this stage only if 'test' is enabled
-    condition: and(not(failed('deployJava')), eq('${{ parameters.TEST }}', 'true'))
-    pool:
-      vmImage: "ubuntu-latest"
-    jobs:
-      # is needed to wait for startup of application
-      - job: waitStartup
-        pool: Server
-        steps:
-          - task: Delay@1
-            inputs:
-              delayForMinutes: '10'
-
-      #      - job: integrationTests
-      #        dependsOn: waitStartup
-      #        steps:
-      #          - script: |
-      #              git checkout $(SOURCE_BRANCH)
-
-      #          - script: |
-      #              yarn global add newman
-      #            displayName: 'newman installation'
-
-      #          - script: |
-      #              newman run api-test/Project.postman_collection.json --environment=api-test/Azure.postman_environment.json --reporters cli,junit --reporter-junit-export Results/api-config-TEST.xml --verbose
-      #            displayName: 'Run api test'
-      #            continueOnError: false
-
-      #          - task: PublishTestResults@2
-      #            condition: always()
-      #            inputs:
-      #              testResultsFormat: 'JUnit'
-      #              testResultsFiles: '**/*-TEST.xml'
-      #              searchFolder: '$(System.DefaultWorkingDirectory)'
-
-      - job: deployUAT
-        dependsOn: integrationTests
-        variables:
-          version: $[ stageDependencies.deploy.deployJava.outputs['dockerTag.version'] ]
-        steps:
-          - task: Maven@3
-            inputs:
-              mavenPomFile: 'pom.xml'
-              publishJUnitResults: false
-              javaHomeOption: 'JDKVersion'
-              jdkVersionOption: '1.11'
-              mavenVersionOption: 'Default'
-              mavenOptions: '-Xmx3072m $(MAVEN_OPTS)'
-              mavenAuthenticateFeed: false
-              effectivePomSkip: false
-              sonarQubeRunAnalysis: false
-
-          - task: Docker@2
-            displayName: Build and push an image to UAT container registry
-            inputs:
-              containerRegistry: '$(UAT_CONTAINER_REGISTRY)'
-              repository: '$(IMAGE_REPOSITORY)'
-              command: 'buildAndPush'
-              tags: |
-                $(Build.BuildId)
-                latest
-                $(version)
-
-          # deploy project-fn
-          - task: AzureFunctionAppContainer@1
-            displayName: Deploy Function App [UAT]
-            condition: in('${{ parameters.ENV }}', 'uat')
-            inputs:
-              azureSubscription: $(AZURE_SUBSCRIPTION)
-              appName: "${{variables.UAT_WEB_APP_NAME}}-fn-project}"
-              imageName: "${{variables.UAT_CONTAINER_NAMESPACE}}/project:$(Build.BuildId)"
-              slotName: production
