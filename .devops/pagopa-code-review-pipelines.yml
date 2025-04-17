@@ -27,7 +27,7 @@ steps:
       path: $(MAVEN_CACHE_FOLDER)
     displayName: Cache Maven local repo
 
-  - task: SonarCloudPrepare@2
+  - task: SonarCloudPrepare@3
     displayName: 'Prepare SonarCloud analysis configuration'
     inputs:
       SonarCloud: '$(SONARCLOUD_SERVICE_CONN)'
@@ -58,7 +58,7 @@ steps:
       isJacocoCoverageReportXML: true
       sqMavenPluginVersionChoice: 'latest'
 
-  - task: SonarCloudPublish@2
+  - task: SonarCloudPublish@3
     displayName: 'Publish SonarCloud results on build summary'
     inputs:
       pollingTimeoutSec: '300'
