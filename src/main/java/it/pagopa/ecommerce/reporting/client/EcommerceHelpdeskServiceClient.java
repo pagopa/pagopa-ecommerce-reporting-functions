@@ -16,9 +16,11 @@ public class EcommerceHelpdeskServiceClient {
     private final it.pagopa.generated.ecommerce.helpdesk.v2.api.ECommerceApi eCommerceApiClientWebClientV2;
 
     @Autowired
-    public EcommerceHelpdeskServiceClient(@Qualifier(
-            "eCommerceApiClientWebClientV2"
-    ) it.pagopa.generated.ecommerce.helpdesk.v2.api.ECommerceApi eCommerceApiClientWebClientV2) {
+    public EcommerceHelpdeskServiceClient(
+            @Qualifier(
+                "eCommerceApiClientWebClientV2"
+            ) it.pagopa.generated.ecommerce.helpdesk.v2.api.ECommerceApi eCommerceApiClientWebClientV2
+    ) {
         this.eCommerceApiClientWebClientV2 = eCommerceApiClientWebClientV2;
     }
 
@@ -35,12 +37,9 @@ public class EcommerceHelpdeskServiceClient {
     }
 
     private static void logWebClientException(WebClientResponseException e) {
-        /* TODO
-        log.info(
-                "Got bad response from payment-methods-service [HTTP {}]: {}",
-                e.getStatusCode(),
-                e.getResponseBodyAsString()
-        );
-        */
+        /*
+         * TODO log.info( "Got bad response from payment-methods-service [HTTP {}]: {}",
+         * e.getStatusCode(), e.getResponseBodyAsString() );
+         */
     }
 }
