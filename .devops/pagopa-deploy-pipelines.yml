@@ -38,7 +38,7 @@ parameters:
 
 variables:
   imageRepository: '$(K8S_IMAGE_REPOSITORY_NAME)'
-  nameSpace: '$(K8S_NAMESPACE)'
+  nameSpace: 'ecommerce'
 
   ${{ if eq(parameters['ENV'], 'dev') }}:
     dockerRegistryServiceConnection: $(DEV_CONTAINER_REGISTRY_SERVICE_CONN)
