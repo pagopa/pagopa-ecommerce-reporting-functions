@@ -9,12 +9,12 @@ import java.time.LocalDateTime;
 /**
  * Azure Functions with Azure Queue trigger.
  */
-public class Example {
+public class PagopaEcommerceReporting {
 
     /**
      * This function will be invoked periodically according to the specified schedule.
      */
-    @FunctionName("ExampleFunction")
+    @FunctionName("PagopaEcommerceReportingFunction")
     public void run(
             @TimerTrigger(name = "timerInfo", schedule = "0 * * * * *") String timerInfo,
             final ExecutionContext context

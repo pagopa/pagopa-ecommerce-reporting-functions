@@ -50,7 +50,7 @@ public class FunctionTest {
         doReturn(Logger.getGlobal()).when(context).getLogger();
 
         // Invoke
-        new Example().run("test", context);
+        new PagopaEcommerceReporting().run("test", context);
 
         // Verify
     }
