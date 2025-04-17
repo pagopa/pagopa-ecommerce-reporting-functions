@@ -22,6 +22,13 @@ parameters:
     type: boolean
     default: false
 
+resources:
+  repositories:
+    - repository: pagopaCommons
+      type: github
+      name: pagopa/azure-pipeline-templates
+      ref: refs/tags/v2.10.1
+      
 variables:
   ${{ if eq(parameters['ENV'], 'dev') }}:
     AZURE_SUBSCRIPTION: $(DEV_AZURE_SUBSCRIPTION)
@@ -69,69 +76,28 @@ pool:
 
 stages:
 
-  # Create a release on GitHub
-  - stage: release_service
-    condition: ne('${{ parameters.SEMVER }}', 'skip')
-    pool:
-      vmImage: "ubuntu-latest"
+ # Create a release on GitHub
+  - stage: Release
     jobs:
-      - job: releaseService
+      - job: make_release
         steps:
           - checkout: self
             clean: true
             persistCredentials: true
 
-          - script: |
-              git checkout $(SOURCE_BRANCH)
+          - ${{ if ne(parameters.SEMVER, 'skip') }}:
+              - template: templates/maven-github-release/template.yaml@pagopaCommons
+                parameters:
+                  release_branch: $(sourceBranch)
+                  gitEmail: $(GIT_EMAIL)
+                  gitUsername: $(GIT_USERNAME)
+                  gitHubConnection: $(GITHUB_CONNECTION)
+                  ${{ if ne(parameters.SEMVER, 'skip') }}:
+                    semver: '${{ parameters.SEMVER }}'
+                  ${{ if eq(parameters.SEMVER, 'skip') }}:
+                    semver: 'buildNumber' # this case is impossible due to main condition, but it is necessary to work property
 
-          - script: |
-              git config --global user.name "$(GIT_USERNAME)"
-              git config --global user.email "$(GIT_EMAIL)"
-
-          - template: azure-templates/maven-versioning.yml
-            parameters:
-              semver: "${{ parameters.SEMVER }}"
-
-          - task: Bash@3
-            name: pomversion
-            inputs:
-              targetType: "inline"
-              script: |
-                version=$(mvn -f pom.xml help:evaluate -Dexpression=project.version -q -DforceStdout)
-                echo "##vso[task.setvariable variable=next;isOutput=true]$version"
-              failOnStderr: true
-
-          - script: |
-              git add pom.xml
-              git commit -m "Bump version [skip ci]"
-              git push origin $(SOURCE_BRANCH)
-
-
-          - script: |
-              HEAD_SHA=$(git rev-parse HEAD)
-              TAG="$(pomversion.next)"
-              TITLE="Release $(pomversion.next)"
-              echo "##vso[task.setvariable variable=title]$TITLE"
-              echo "##vso[task.setvariable variable=sha]$HEAD_SHA"
-              echo "##vso[task.setvariable variable=tag]$TAG"
-
-          - script: |
-              echo $(tag)
-              echo $(title)
-              echo $(sha)
-
-
-          # create new release
-          - task: GitHubRelease@0
-            inputs:
-              gitHubConnection: $(GITHUB_CONNECTION)
-              repositoryName: $(Build.Repository.Name)
-              action: create
-              target: $(sha)
-              tagSource: manual
-              tag: $(tag)
-              title: $(title)
-              addChangelog: true
+          - template: templates/maven-github-current-version/template.yaml@pagopaCommons
 
   # Deploy on Azure
   - stage: deploy
@@ -156,15 +122,6 @@ stages:
               echo "Checkout on $(SOURCE_BRANCH)"
               git checkout $(SOURCE_BRANCH)
             displayName: Checkout on source branch
-
-          #          - task: Bash@3
-          #            name: application_properties
-          #            inputs:
-          #              targetType: "inline"
-          #              script: |
-          #                cp src/main/resources/application-azure-$(STAGE).properties src/main/resources/application.properties
-          #                cat src/main/resources/application.properties
-          #              failOnStderr: true
 
           - task: Cache@2
             inputs:
