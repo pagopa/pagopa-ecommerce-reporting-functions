@@ -20,6 +20,9 @@
         <azure.functions.maven.plugin.version>1.24.0</azure.functions.maven.plugin.version>
         <azure.functions.java.library.version>2.2.0</azure.functions.java.library.version>
         <functionAppName>pagopa-ecommerce-reporting-functions</functionAppName>
+        <spring-cloud-azure.version>4.0.0</spring-cloud-azure.version>
+        <jacoco.version>0.8.8</jacoco.version>
+        <spotless.version>2.28.0</spotless.version>
     </properties>
 
     <dependencies>
@@ -42,7 +45,6 @@
             <version>2.23.4</version>
             <scope>test</scope>
         </dependency>
-
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webflux</artifactId>
@@ -58,6 +60,11 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.swagger.core.v3</groupId>
+            <artifactId>swagger-annotations</artifactId>
+            <version>2.2.19</version>
         </dependency>
     </dependencies>
 
@@ -137,7 +144,7 @@
                             <goal>generate</goal>
                         </goals>
                         <configuration>
-                            <inputSpec>https://raw.githubusercontent.com/pagopa/pagopa-infra/refs/heads/main/src/domains/ecommerce-app/api/ecommerce-helpdesk-api/v2/_openapi.json.tpl</inputSpec>
+                            <inputSpec>https://raw.githubusercontent.com/pagopa/pagopa-infra/0fea2d582bfac2d79aad30cde5aeb8f620fc8fe0/src/domains/ecommerce-app/api/ecommerce-helpdesk-api/v2/_openapi.json.tpl</inputSpec>
                             <generatorName>java</generatorName>
                             <library>webclient</library>
                             <generateApiDocumentation>false</generateApiDocumentation>
@@ -148,8 +155,8 @@
                                 <swaggerAnnotations>false</swaggerAnnotations>
                                 <openApiNullable>false</openApiNullable>
                             </configOptions>
-                            <modelPackage>it.pagopa.generated.ecommerce.helpdesk.v1.dto</modelPackage>
-                            <apiPackage>it.pagopa.generated.ecommerce.helpdesk.v1.api</apiPackage>
+                            <modelPackage>it.pagopa.generated.ecommerce.helpdesk.v2.dto</modelPackage>
+                            <apiPackage>it.pagopa.generated.ecommerce.helpdesk.v2.api</apiPackage>
                             <modelNameSuffix>dto</modelNameSuffix>
                         </configuration>
                     </execution>
