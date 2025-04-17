@@ -3,7 +3,7 @@ microservice-chart:
   nameOverride: ""
   fullnameOverride: "pagopa-ecommerce-reporting-functions"
   image:
-    repository: pagopaditncoreacr.azurecr.io/pagopaecommercereportingfunctions
+    repository: pagopadcommonacr.azurecr.io/pagopaecommercereportingfunctions
     tag: "0.14.2"
     pullPolicy: Always
   livenessProbe:
