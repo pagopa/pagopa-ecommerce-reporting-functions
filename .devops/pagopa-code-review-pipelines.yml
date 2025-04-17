@@ -27,7 +27,7 @@ steps:
       path: $(MAVEN_CACHE_FOLDER)
     displayName: Cache Maven local repo
 
-  - task: SonarCloudPrepare@1
+  - task: SonarCloudPrepare@2
     displayName: 'Prepare SonarCloud analysis configuration'
     inputs:
       SonarCloud: '$(SONARCLOUD_SERVICE_CONN)'
@@ -40,7 +40,7 @@ steps:
         sonar.cpd.exclusions=**/model/**,**/entity/*
       
 
-  - task: Maven@3
+  - task: Maven@4
     displayName: 'Run Junit Test'
     inputs:
       mavenPomFile: 'pom.xml'
@@ -58,7 +58,7 @@ steps:
       isJacocoCoverageReportXML: true
       sqMavenPluginVersionChoice: 'latest'
 
-  - task: SonarCloudPublish@1
+  - task: SonarCloudPublish@2
     displayName: 'Publish SonarCloud results on build summary'
     inputs:
       pollingTimeoutSec: '300'
