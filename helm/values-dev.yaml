@@ -8,14 +8,14 @@ microservice-chart:
     pullPolicy: Always
   livenessProbe:
     httpGet:
-      path: /health/liveness
+      path: /liveness
       port: 8080
     initialDelaySeconds: 120
     failureThreshold: 6
     periodSeconds: 10
   readinessProbe:
     httpGet:
-      path: /health/readiness
+      path: /liveness
       port: 8080
     initialDelaySeconds: 120
     failureThreshold: 6
