@@ -1,42 +1,71 @@
-# pagoPA Functions template
+# pagopa-ecommerce-reporting-functions
 
-Java template to create an Azure Function.
+## What is this?
 
-## Function examples
-There is an example of a Http Trigger function.
+This is a PagoPA Azure functions that handles ecommerce transactions reporting.
 
----
+### Environment variables
 
-## Run locally with Docker
-`docker build -t pagopa-functions-template .`
+These are all environment variables needed by the application:
 
-`docker run -p 8999:80 pagopa-functions-template`
+| Variable name                                 |     | Description                                                             | type   | default |
+|-----------------------------------------------|-----|-------------------------------------------------------------------------|--------|---------|
+| ECOMMERCE_HELPDESK_SERVICE_URI                |     | eCommerce Helpdesk service connection URI                               | string |         |
+| ECOMMERCE_HELPDESK_SERVICE_READ_TIMEOUT       |     | Timeout for requests towards eCommerce Helpdesk service                 | number |         |
+| ECOMMERCE_HELPDESK_SERVICE_CONNECTION_TIMEOUT |     | Timeout for establishing connections towards eCommerce Helpdesk service | number |         |
+| ECOMMERCE_HELPDESK_SERVICE_API_KEY            |     | Helpdesk methods API key                                                | string |         |
 
-### Test
-`curl http://localhost:8999/example`
+An example configuration of these environment variables is in the `.env.example` file.
 
-## Run locally with Maven
+## Run the application with `Docker`
 
-`mvn clean package`
+Create your environment typing :
 
-`mvn azure-functions:run`
+```sh
+cp .env.example .env
+```
 
-### Test
-`curl http://localhost:7071/example` 
+Then from current project directory run :
 
----
+```sh
+docker-compose up
+```
 
+if all right you'll see something like that :
 
-## TODO
-Once cloned the repo, you should:
-- to deploy on standard Azure service:
-  - rename `deploy-pipelines-standard.yml` to `deploy-pipelines.yml`
-  - remove `helm` folder
-- to deploy on Kubernetes:
-  - rename `deploy-pipelines-aks.yml` to `deploy-pipelines.yml`
-  - customize `helm` configuration
-- configure the following GitHub action in `.github` folder: 
-  - `deploy.yml`
-  - `sonar_analysis.yml`
+```sh
+# -- snip --
+```
 
-Configure the SonarCloud project :point_right: [guide](https://pagopa.atlassian.net/wiki/spaces/DEVOPS/pages/147193860/SonarCloud+experimental).
+## Code formatting
+
+Code formatting checks are automatically performed during build phase.
+If the code is not well formatted an error is raised blocking the maven build.
+
+Helpful commands:
+
+```sh
+mvn spotless:check # --> used to perform format checks
+mvn spotless:apply # --> used to format all misformatted files
+```
+
+## CI
+
+Repo has Github workflow and actions that trigger Azure devops deploy pipeline once a PR is merged on main branch.
+
+In order to properly set version bump parameters for call Azure devops deploy pipelines will be check for the following
+tags presence during PR analysis:
+
+| Tag                | Semantic versioning scope | Meaning                                                           |
+|--------------------|---------------------------|-------------------------------------------------------------------|
+| patch              | Application version       | Patch-bump application version into pom.xml and Chart app version |
+| minor              | Application version       | Minor-bump application version into pom.xml and Chart app version |
+| major              | Application version       | Major-bump application version into pom.xml and Chart app version |
+| ignore-for-release | Application version       | Ignore application version bump                                   |
+| chart-patch        | Chart version             | Patch-bump Chart version                                          |
+| chart-minor        | Chart version             | Minor-bump Chart version                                          |
+| chart-major        | Chart version             | Major-bump Chart version                                          |
+| skip-release       | Any                       | The release will be skipped altogether                            |
+
+For the check to be successfully passed only one of the `Application version` labels and only ones of
+the `Chart version` labels must be contemporary present for a given PR or the `skip-release` for skipping release step
