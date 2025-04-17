@@ -3,6 +3,7 @@ package it.pagopa.ecommerce.reporting;
 import com.microsoft.azure.functions.*;
 import com.microsoft.azure.functions.annotation.FunctionName;
 import com.microsoft.azure.functions.annotation.TimerTrigger;
+import it.pagopa.ecommerce.reporting.utils.ClientId;
 
 import java.time.LocalDateTime;
 
@@ -20,5 +21,6 @@ public class PagopaEcommerceReporting {
             final ExecutionContext context
     ) {
         context.getLogger().info("Java Timer trigger function executed at: " + LocalDateTime.now());
+        executeJob();
     }
 }
