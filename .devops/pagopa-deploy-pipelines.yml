@@ -21,13 +21,14 @@ parameters:
     displayName: Run tests
     type: boolean
     default: false
-
+    
 resources:
   repositories:
     - repository: pagopaCommons
       type: github
       name: pagopa/azure-pipeline-templates
       ref: refs/tags/v2.10.1
+      endpoint: 'io-azure-devops-github-ro'
       
 variables:
   ${{ if eq(parameters['ENV'], 'dev') }}:
