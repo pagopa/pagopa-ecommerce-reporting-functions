@@ -31,10 +31,6 @@ parameters:
     values:
       - False
       - True
-  - name: TEST
-    displayName: Run integration/smoke tests
-    type: boolean
-    default: true
 
 variables:
   imageRepository: '$(K8S_IMAGE_REPOSITORY_NAME)'
@@ -123,11 +119,9 @@ stages:
 
   # Deploy on K8s with Helm
   - stage: Deploy
-#    condition: not(failed('Smoke_Test'))
     dependsOn:
       - Release
       - Build
-#      - Smoke_Test
     variables:
       deploy_version: $[ stageDependencies.Release.make_release.outputs['current_version.value'] ]
     jobs:
@@ -143,7 +137,7 @@ stages:
                   displayName: "Checkout"
 
                 - task: KubectlInstaller@0
-                
+
                 - task: Bash@3
                   name: update_chart_version
                   displayName: 'Setup helm microservice chart'
