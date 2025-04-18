@@ -36,7 +36,7 @@ public class HealthcheckHttpFunction {
 
 		return request.createResponseBuilder(HttpStatus.OK)
 				.header("Content-Type", "application/json")
-				.body(getInfo(context.getLogger(), "/META-INF/maven/it.gov.pagopa.bizeventsdatastore/biz-events-datastore-function/pom.properties"))
+				.body(getInfo(context.getLogger(), "/maven-archiver/pom.properties"))
 				.build();
 	}
 
