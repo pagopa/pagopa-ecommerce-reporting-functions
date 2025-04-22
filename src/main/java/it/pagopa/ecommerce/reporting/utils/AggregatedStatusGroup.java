@@ -3,7 +3,9 @@ package it.pagopa.ecommerce.reporting.utils;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.Getter;
 
+@Getter
 public class AggregatedStatusGroup {
     private String date;
     private String clientId;
