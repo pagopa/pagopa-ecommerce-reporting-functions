@@ -3,7 +3,7 @@ trigger: none
 pr: none
 
 pool:
-  vmImage: 'ubuntu-22.04'
+  vmImage: ubuntu-latest
 
 parameters:
   - name: ENV
@@ -31,36 +31,27 @@ parameters:
     values:
       - False
       - True
-  - name: TEST
-    displayName: Run integration/smoke tests
-    type: boolean
-    default: true
 
 variables:
-  imageRepository: '$(IMAGE_REPOSITORY_NAME)'
-  nameSpace: '$(K8S_NAMESPACE)'
+  imageRepository: '$(K8S_IMAGE_REPOSITORY_NAME)'
+  nameSpace: 'ecommerce'
 
   ${{ if eq(parameters['ENV'], 'dev') }}:
     dockerRegistryServiceConnection: $(DEV_CONTAINER_REGISTRY_SERVICE_CONN)
     dockerRegistryFqdn: $(DEV_CONTAINER_NAMESPACE)
     kubernetesServiceConnection: '$(DEV_KUBERNETES_SERVICE_CONN)'
     poolImage: 'pagopa-dev-linux'
-    appInsightsServiceConn: "$(TF_APPINSIGHTS_SERVICE_CONN_DEV)"
-    appInsightsResourceId: "$(TF_APPINSIGHTS_RESOURCE_ID_DEV)"
   ${{ if eq(parameters['ENV'], 'uat') }}:
     dockerRegistryServiceConnection: $(UAT_CONTAINER_REGISTRY_SERVICE_CONN)
     dockerRegistryFqdn: $(UAT_CONTAINER_NAMESPACE)
     kubernetesServiceConnection: '$(UAT_KUBERNETES_SERVICE_CONN)'
     poolImage: 'pagopa-uat-linux'
-    appInsightsServiceConn: "$(TF_APPINSIGHTS_SERVICE_CONN_UAT)"
-    appInsightsResourceId: "$(TF_APPINSIGHTS_RESOURCE_ID_UAT)"
   ${{ if eq(parameters['ENV'], 'prod') }}:
     dockerRegistryServiceConnection: $(PROD_CONTAINER_REGISTRY_SERVICE_CONN)
     dockerRegistryFqdn: $(PROD_CONTAINER_NAMESPACE)
     kubernetesServiceConnection: '$(PROD_KUBERNETES_SERVICE_CONN)'
     poolImage: 'pagopa-prod-linux'
-    appInsightsServiceConn: "$(TF_APPINSIGHTS_SERVICE_CONN_PROD)"
-    appInsightsResourceId: "$(TF_APPINSIGHTS_RESOURCE_ID_PROD)"
+
 
   ${{ if eq(variables['Build.SourceBranchName'], 'merge') }}:
     sourceBranch: "main" # force to main branch
@@ -125,44 +116,12 @@ stages:
               DOCKER_IMAGE_TAG: $(current_version)
               FORCE_REPLACE_DOCKER_IMAGE: ${{ parameters.FORCE_REPLACE_DOCKER_IMAGE }}
 
-#  # Testing the docker image
-#  - stage: Smoke_Test
-#    dependsOn:
-#      - Build
-#    condition: and(succeeded(), eq('${{ parameters.TEST }}', 'true'))
-#    jobs:
-#      - job: smoke_tests
-#        steps:
-#          - checkout: self
-#            persistCredentials: true
-#
-#          - script: |
-#              git checkout $(sourceBranch)
-#            displayName: Checkout and update branch
-#
-#          - task: Docker@2
-#            displayName: "Docker login"
-#            inputs:
-#              containerRegistry: "$(dockerRegistryServiceConnection)"
-#              command: "login"
-#
-#          - task: Bash@3
-#            displayName: 'Run Smoke Tests'
-#            inputs:
-#              targetType: 'inline'
-#              script: |
-#                cd ./integration-test
-#                sh run_integration_test.sh
-#            env:
-#              containerRegistry: $(dockerRegistryFqdn)
 
   # Deploy on K8s with Helm
   - stage: Deploy
-#    condition: not(failed('Smoke_Test'))
     dependsOn:
       - Release
       - Build
-#      - Smoke_Test
     variables:
       deploy_version: $[ stageDependencies.Release.make_release.outputs['current_version.value'] ]
     jobs:
@@ -175,15 +134,18 @@ stages:
             deploy:
               steps:
                 - checkout: self
-                  persistCredentials: true
+                  displayName: "Checkout"
 
-                - script: |
-                    git checkout $(sourceBranch)
-                  displayName: Checkout and update branch
+                - task: KubectlInstaller@0
 
-                - template: templates/helm-microservice-chart-setup/template.yaml@pagopaCommons
-                  parameters:
-                    DEPLOY_VERSION: $(deploy_version)
+                - task: Bash@3
+                  name: update_chart_version
+                  displayName: 'Setup helm microservice chart'
+                  inputs:
+                    targetType: "inline"
+                    script: |
+                      helm repo add microservice-chart https://pagopa.github.io/aks-microservice-chart-blueprint
+                      helm dep build helm
 
                 - template: templates/helm-microservice-chart-deploy/template.yaml@pagopaCommons
                   parameters:
@@ -194,30 +156,5 @@ stages:
                     APP_NAME: $(imageRepository)
                     VALUE_FILE: "helm/values-${{ parameters['ENV'] }}.yaml"
                     DEPLOY_VERSION: $(deploy_version)
-                    APPINSIGHTS_SERVICE_CONN: ${{ variables.appInsightsServiceConn }}
-                    APPINSIGHTS_RESOURCE_ID: ${{ variables.appInsightsResourceId }}
 
 
-  # Run Tests
-#  - stage: Integration_Test
-#    dependsOn:
-#      - Deploy
-#    condition: and(succeeded(), eq('${{ parameters.TEST }}', 'true'))
-#    jobs:
-#      - job: integration_tests
-#        steps:
-#          - checkout: self
-#            persistCredentials: true
-#
-#          - script: |
-#              git checkout $(sourceBranch)
-#            displayName: Checkout and update branch
-#
-#          - task: Bash@3
-#            displayName: 'Run Integration Tests'
-#            inputs:
-#              targetType: 'inline'
-#              script: |
-#                cd ./integration-test/src
-#                yarn install
-#                yarn test:${{ parameters.ENV }}
