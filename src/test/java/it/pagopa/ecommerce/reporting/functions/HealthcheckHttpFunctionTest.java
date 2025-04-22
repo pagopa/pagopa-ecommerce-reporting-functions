@@ -1,4 +1,4 @@
-package it.pagopa.ecommerce.reporting;
+package it.pagopa.ecommerce.reporting.functions;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -9,7 +9,6 @@ import static org.mockito.Mockito.mock;
 import java.util.Optional;
 import java.util.logging.Logger;
 
-import it.pagopa.ecommerce.reporting.functions.HealthcheckHttpFunction;
 import lombok.SneakyThrows;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

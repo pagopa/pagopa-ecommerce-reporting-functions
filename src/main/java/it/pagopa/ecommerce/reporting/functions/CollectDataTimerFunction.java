@@ -6,8 +6,10 @@ import com.microsoft.azure.functions.annotation.FunctionName;
 import com.microsoft.azure.functions.annotation.TimerTrigger;
 import it.pagopa.ecommerce.reporting.services.ReadDataService;
 import it.pagopa.ecommerce.reporting.services.WriteDataService;
+import it.pagopa.ecommerce.reporting.utils.MapParametersUtils;
 
 import java.util.*;
+import java.util.function.Function;
 
 public class CollectDataTimerFunction {
 
@@ -18,7 +20,28 @@ public class CollectDataTimerFunction {
             ReadDataService readDataService,
             WriteDataService writeDataService
     ) {
-        this.readDataService = readDataService;
+        Set<String> ecommerceClientList = MapParametersUtils.parseSetString(System.getenv("ECOMMERCE_CLIENTS_LIST"))
+                .fold(exception -> {
+                    throw exception;
+                },
+                        Function.identity()
+                );
+        Set<String> paymentTypeCodeList = MapParametersUtils
+                .parseSetString(System.getenv("ECOMMERCE_PAYMENT_METHODS_TYPE_CODE_LIST")).fold(exception -> {
+                    throw exception;
+                },
+                        Function.identity()
+                );
+
+        Map<String, Set<String>> paymentTypeCodePspIdList = MapParametersUtils
+                .parsePspMap(System.getenv("ECOMMERCE_PAYMENT_METHODS_TYPE_CODE_LIST"), paymentTypeCodeList)
+                .fold(exception -> {
+                    throw exception;
+                },
+                        Function.identity()
+                );
+        this.readDataService = ReadDataService.builder().ecommerceClientList(ecommerceClientList)
+                .paymentTypeCodeList(paymentTypeCodeList).pspList(paymentTypeCodePspIdList).build();
     }
 
     @FunctionName("readAndWriteData")

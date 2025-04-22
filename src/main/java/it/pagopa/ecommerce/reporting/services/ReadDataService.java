@@ -1,5 +1,7 @@
 package it.pagopa.ecommerce.reporting.services;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JacksonException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -7,64 +9,23 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vavr.control.Either;
 import it.pagopa.ecommerce.reporting.clients.EcommerceHelpdeskServiceClient;
 import it.pagopa.ecommerce.reporting.exceptions.JobConfigurationException;
+import lombok.*;
 
 import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.function.Function;
 import java.util.logging.Logger;
 
+@Data
+@Builder(toBuilder = true)
+@NoArgsConstructor
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
+@JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class ReadDataService {
-
-    private final EcommerceHelpdeskServiceClient ecommerceHelpdeskServiceClient;
-
-    private final Set<String> ecommerceClientList;
-    private final Set<String> paymentTypeCodeList;
-    private final Map<String, Set<String>> pspList;
-
-    private final ObjectMapper objectMapper = new ObjectMapper();
-
-    public ReadDataService(
-            EcommerceHelpdeskServiceClient ecommerceHelpdeskServiceClient,
-            Set<String> ecommerceClientList,
-            Set<String> paymentTypeCodeList,
-            String pspList
-    ) {
-        this.ecommerceHelpdeskServiceClient = ecommerceHelpdeskServiceClient;
-        this.ecommerceClientList = ecommerceClientList;
-        this.paymentTypeCodeList = paymentTypeCodeList;
-        this.pspList = parsePspMap(pspList, paymentTypeCodeList).fold(exception -> {
-            throw exception;
-        },
-                Function.identity()
-        );
-
-    }
-
-    private Either<JobConfigurationException, Map<String, Set<String>>> parsePspMap(
-                                                                                    String pspList,
-                                                                                    Set<String> paymentMethodsTypeCodeToHandle
-    ) {
-        try {
-            Set<String> expectedKeys = new HashSet<>(paymentMethodsTypeCodeToHandle);
-            Map<String, Set<String>> paymentMethodPspMap = objectMapper
-                    .readValue(pspList, new TypeReference<HashMap<String, Set<String>>>() {
-                    });
-            Set<String> configuredKeys = paymentMethodPspMap.keySet();
-            expectedKeys.removeAll(configuredKeys);
-            if (!expectedKeys.isEmpty()) {
-                return Either.left(
-                        new JobConfigurationException(
-                                "Misconfigured paymentMethod keys. Missing keys: %s".formatted(expectedKeys)
-                        )
-                );
-            }
-            return Either.right(paymentMethodPspMap);
-        } catch (JacksonException ignored) {
-            // exception here is ignored on purpose in order to avoid secret configuration
-            // logging in case of wrong configured json string object
-            return Either.left(new JobConfigurationException("Invalid json configuration map"));
-        }
-    }
+    private Set<String> ecommerceClientList;
+    private Set<String> paymentTypeCodeList;
+    private Map<String, Set<String>> pspList;
 
     public List<JsonNode> readData() {
         OffsetDateTime now = OffsetDateTime.now();
@@ -89,9 +50,9 @@ public class ReadDataService {
                 now.getOffset()
         ).minusNanos(1);
         List<JsonNode> transactionMetricsResponseDtoList = new ArrayList<>();
-        ecommerceClientList.parallelStream().forEach(
-                client -> paymentTypeCodeList.parallelStream().forEach(
-                        paymentMethodTypeCode -> pspList.get(paymentMethodTypeCode).parallelStream().forEach(pspId -> {
+        ecommerceClientList.forEach(
+                client -> paymentTypeCodeList.forEach(
+                        paymentMethodTypeCode -> pspList.get(paymentMethodTypeCode).forEach(pspId -> {
                             transactionMetricsResponseDtoList.add(
                                     EcommerceHelpdeskServiceClient.fetchTransactionMetrics(
                                             client,
@@ -108,7 +69,6 @@ public class ReadDataService {
                 )
         );
         return transactionMetricsResponseDtoList;
-
     }
 
 }
