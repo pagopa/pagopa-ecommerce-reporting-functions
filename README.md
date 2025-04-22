@@ -17,6 +17,47 @@ These are all environment variables needed by the application:
 
 An example configuration of these environment variables is in the `.env.example` file.
 
+## Installation
+
+### Prerequisites
+
+Before you begin, make sure you have the following tools installed:
+
+- **[Java Development Kit (JDK) 11+](https://adoptopenjdk.net/)** (required to run Azure Functions with Java)
+- **[Maven](https://maven.apache.org/)** (for building the project)
+- **[Azure Functions Core Tools](https://docs.microsoft.com/en-us/azure/azure-functions/functions-run-local)** (for local development and testing)
+- **[Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli)** (for Azure deployment)
+- **[Visual Studio Code](https://code.visualstudio.com/)** or your preferred IDE
+- **[Azure Functions for Java](https://docs.microsoft.com/en-us/azure/azure-functions/functions-reference-java)** (Java runtime for Azure Functions)
+
+### Install Dependencies
+The project uses Maven for dependency management. Run the following command to download the required dependencies:
+
+```bash
+mvn clean install
+Configure Azure Functions
+Create the necessary Azure Function configurations (e.g., connection strings, API keys) in local.settings.json for local development. For example:
+```
+
+```json
+{
+  "IsEncrypted": false,
+  "Values": {
+    "FUNCTIONS_WORKER_RUNTIME": "java",
+    "AzureWebJobsStorage": "<your-storage-connection-string>",
+    "YourApiKey": "<your-api-key>"
+  }
+}
+```
+
+### Run the Function Locally
+You can test the function locally using the Azure Functions Core Tools. Run the following command to start the function:
+
+```bash
+mvn azure-functions:run
+This will start the Azure Function locally, and you can test it with HTTP requests or other configured triggers.
+```
+
 ## Run the application with `Docker`
 
 Create your environment typing :
