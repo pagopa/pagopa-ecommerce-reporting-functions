@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vavr.control.Either;
 import it.pagopa.ecommerce.reporting.clients.EcommerceHelpdeskServiceClient;
 import it.pagopa.ecommerce.reporting.exceptions.JobConfigurationException;
+import it.pagopa.ecommerce.reporting.utils.MapParametersUtils;
 import lombok.*;
 
 import java.time.OffsetDateTime;
@@ -16,16 +17,37 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.logging.Logger;
 
-@Data
-@Builder(toBuilder = true)
-@NoArgsConstructor
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonIgnoreProperties(ignoreUnknown = true)
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class ReadDataService {
-    private Set<String> ecommerceClientList;
-    private Set<String> paymentTypeCodeList;
-    private Map<String, Set<String>> pspList;
+
+    private static ReadDataService instance = null;
+    private final Set<String> ecommerceClientList = MapParametersUtils
+            .parseSetString(System.getenv("ECOMMERCE_CLIENTS_LIST"))
+            .fold(exception -> {
+                throw exception;
+            },
+                    Function.identity()
+            );
+    private final Set<String> paymentTypeCodeList = MapParametersUtils
+            .parseSetString(System.getenv("ECOMMERCE_PAYMENT_METHODS_TYPE_CODE_LIST")).fold(exception -> {
+                throw exception;
+            },
+                    Function.identity()
+            );
+    private final Map<String, Set<String>> pspList = MapParametersUtils
+            .parsePspMap(System.getenv("ECOMMERCE_PAYMENT_METHODS_TYPE_CODE_LIST"), paymentTypeCodeList)
+            .fold(exception -> {
+                throw exception;
+            },
+                    Function.identity()
+            );
+
+    public static ReadDataService getInstance() {
+        if (instance == null) {
+            instance = new ReadDataService();
+        }
+        return instance;
+    }
 
     public List<JsonNode> readData() {
         OffsetDateTime now = OffsetDateTime.now();

@@ -10,38 +10,12 @@ import it.pagopa.ecommerce.reporting.utils.MapParametersUtils;
 
 import java.util.*;
 import java.util.function.Function;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class CollectDataTimerFunction {
 
-    private ReadDataService readDataService;
-    private WriteDataService writeDataService;
-
-    public CollectDataTimerFunction(
-            ReadDataService readDataService,
-            WriteDataService writeDataService
-    ) {
-        Set<String> ecommerceClientList = MapParametersUtils.parseSetString(System.getenv("ECOMMERCE_CLIENTS_LIST"))
-                .fold(exception -> {
-                    throw exception;
-                },
-                        Function.identity()
-                );
-        Set<String> paymentTypeCodeList = MapParametersUtils
-                .parseSetString(System.getenv("ECOMMERCE_PAYMENT_METHODS_TYPE_CODE_LIST")).fold(exception -> {
-                    throw exception;
-                },
-                        Function.identity()
-                );
-
-        Map<String, Set<String>> paymentTypeCodePspIdList = MapParametersUtils
-                .parsePspMap(System.getenv("ECOMMERCE_PAYMENT_METHODS_TYPE_CODE_LIST"), paymentTypeCodeList)
-                .fold(exception -> {
-                    throw exception;
-                },
-                        Function.identity()
-                );
-        this.readDataService = ReadDataService.builder().ecommerceClientList(ecommerceClientList)
-                .paymentTypeCodeList(paymentTypeCodeList).pspList(paymentTypeCodePspIdList).build();
+    public CollectDataTimerFunction() {
     }
 
     @FunctionName("readAndWriteData")
@@ -51,8 +25,24 @@ public class CollectDataTimerFunction {
                                  ) String timerInfo,
                                  ExecutionContext context
     ) {
+        Logger logger = context.getLogger();
+        logger.log(
+                Level.CONFIG,
+                () -> "[CollectDataTimerFunction][id=" + context.getInvocationId() + "] new timer " + timerInfo
+        );
+        ReadDataService readDataService = this.getReadDataServiceInstance();
+        WriteDataService writeDataService = this.getWriteDataServiceInstance();
+
         List<JsonNode> transactionMetricsResponseDtoList = readDataService.readData();
         writeDataService.writeData(transactionMetricsResponseDtoList);
+    }
+
+    protected ReadDataService getReadDataServiceInstance() {
+        return ReadDataService.getInstance();
+    }
+
+    protected WriteDataService getWriteDataServiceInstance() {
+        return WriteDataService.getInstance();
     }
 
 }
