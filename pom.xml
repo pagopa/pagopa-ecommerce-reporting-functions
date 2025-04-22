@@ -19,6 +19,7 @@
         <java.version>17</java.version>
         <azure.functions.maven.plugin.version>1.24.0</azure.functions.maven.plugin.version>
         <azure.functions.java.library.version>2.2.0</azure.functions.java.library.version>
+        <azure.data.tables.java.library.version>12.5.3</azure.data.tables.java.library.version>
         <functionAppName>pagopa-ecommerce-reporting-functions</functionAppName>
         <spring-cloud-azure.version>4.0.0</spring-cloud-azure.version>
         <jacoco.version>0.8.8</jacoco.version>
@@ -30,6 +31,11 @@
             <groupId>com.microsoft.azure.functions</groupId>
             <artifactId>azure-functions-java-library</artifactId>
             <version>${azure.functions.java.library.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.azure</groupId>
+            <artifactId>azure-data-tables</artifactId>
+            <version>${azure.data.tables.java.library.version}</version>
         </dependency>
         <!-- Test -->
         <dependency>
