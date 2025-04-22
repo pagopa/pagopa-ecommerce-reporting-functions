@@ -30,7 +30,7 @@ class HealthcheckHttpFunctionTest {
     @Mock
     HttpRequestMessage<Optional<String>> request;
 
-	@Mock
+    @Mock
     ExecutionContext context;
 
     @Spy

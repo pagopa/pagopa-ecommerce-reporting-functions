@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class AppInfoTest {
-    
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
@@ -59,13 +59,13 @@ public class AppInfoTest {
     @Test
     void testJsonDeserializationIgnoresUnknownFields() throws Exception {
         String json = """
-            {
-              "name": "ecommerce-app",
-              "version": "1.0.0",
-              "environment": "test",
-              "extraField": "shouldBeIgnored"
-            }
-        """;
+                    {
+                      "name": "ecommerce-app",
+                      "version": "1.0.0",
+                      "environment": "test",
+                      "extraField": "shouldBeIgnored"
+                    }
+                """;
 
         AppInfo appInfo = objectMapper.readValue(json, AppInfo.class);
 

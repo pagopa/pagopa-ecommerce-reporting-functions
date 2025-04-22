@@ -92,7 +92,16 @@ public class ReadDataService {
         ecommerceClientList.parallelStream().forEach(
                 client -> paymentTypeCodeList.parallelStream().forEach(
                         paymentMethodTypeCode -> pspList.get(paymentMethodTypeCode).parallelStream().forEach(pspId -> {
-                                    transactionMetricsResponseDtoList.add(EcommerceHelpdeskServiceClient.fetchTransactionMetrics(client,pspId,paymentMethodTypeCode,startDateTime,endDateTime, Logger.getLogger(ReadDataService.class.getName())));
+                            transactionMetricsResponseDtoList.add(
+                                    EcommerceHelpdeskServiceClient.fetchTransactionMetrics(
+                                            client,
+                                            pspId,
+                                            paymentMethodTypeCode,
+                                            startDateTime,
+                                            endDateTime,
+                                            Logger.getLogger(ReadDataService.class.getName())
+                                    )
+                            );
                         }
 
                         )

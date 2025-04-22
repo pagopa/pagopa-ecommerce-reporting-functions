@@ -17,44 +17,50 @@ import java.util.Properties;
 import java.util.logging.Logger;
 
 /**
- * This is the function that will be invoked when a Http Trigger occurs
- * It will return the version of the application
+ * This is the function that will be invoked when a Http Trigger occurs It will
+ * return the version of the application
  */
 public class HealthcheckHttpFunction {
 
-	/**
-	 * This function will be invoked when a Http Trigger occurs
-	 * @return
-	 */
-	@FunctionName("Liveness")
-	public HttpResponseMessage run (
-			@HttpTrigger(name = "LivenessTrigger",
-			methods = {HttpMethod.GET},
-			route = "liveness",
-			authLevel = AuthorizationLevel.ANONYMOUS) HttpRequestMessage<Optional<String>> request,
-			final ExecutionContext context) {
+    /**
+     * This function will be invoked when a Http Trigger occurs
+     *
+     * @return
+     */
+    @FunctionName("Liveness")
+    public HttpResponseMessage run(
+                                   @HttpTrigger(
+                                           name = "LivenessTrigger", methods = {
+                                                   HttpMethod.GET
+                                           }, route = "liveness", authLevel = AuthorizationLevel.ANONYMOUS
+                                   ) HttpRequestMessage<Optional<String>> request,
+                                   final ExecutionContext context
+    ) {
 
-		return request.createResponseBuilder(HttpStatus.OK)
-				.header("Content-Type", "application/json")
-				.body(getInfo(context.getLogger(), "/maven-archiver/pom.properties"))
-				.build();
-	}
+        return request.createResponseBuilder(HttpStatus.OK)
+                .header("Content-Type", "application/json")
+                .body(getInfo(context.getLogger(), "/maven-archiver/pom.properties"))
+                .build();
+    }
 
-	public synchronized AppInfo getInfo(Logger logger, String path) {
-		String version = null;
-		String name = null;
-		try {
-			Properties properties = new Properties();
-			InputStream inputStream = getClass().getResourceAsStream(path);
-			if (inputStream != null) {
-				properties.load(inputStream);
-				version = properties.getProperty("version", null);
-				name = properties.getProperty("artifactId", null);
-			}
-		} catch (Exception e) {
-			logger.severe("Impossible to retrieve information from pom.properties file.");
-		}
-		return AppInfo.builder().version(version).environment("azure-fn").name(name).build();
-	}
+    public synchronized AppInfo getInfo(
+                                        Logger logger,
+                                        String path
+    ) {
+        String version = null;
+        String name = null;
+        try {
+            Properties properties = new Properties();
+            InputStream inputStream = getClass().getResourceAsStream(path);
+            if (inputStream != null) {
+                properties.load(inputStream);
+                version = properties.getProperty("version", null);
+                name = properties.getProperty("artifactId", null);
+            }
+        } catch (Exception e) {
+            logger.severe("Impossible to retrieve information from pom.properties file.");
+        }
+        return AppInfo.builder().version(version).environment("azure-fn").name(name).build();
+    }
 
 }

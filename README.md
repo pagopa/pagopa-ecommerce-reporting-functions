@@ -41,12 +41,12 @@ Create the necessary Azure Function configurations (e.g., connection strings, AP
 
 ```json
 {
-  "IsEncrypted": false,
-  "Values": {
-    "FUNCTIONS_WORKER_RUNTIME": "java",
-    "AzureWebJobsStorage": "<your-storage-connection-string>",
-    "YourApiKey": "<your-api-key>"
-  }
+"IsEncrypted": false,
+"Values": {
+	"FUNCTIONS_WORKER_RUNTIME": "java",
+	"AzureWebJobsStorage": "<your-storage-connection-string>",
+	"YourApiKey": "<your-api-key>"
+}
 }
 ```
 
