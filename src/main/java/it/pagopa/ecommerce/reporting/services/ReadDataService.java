@@ -2,22 +2,17 @@ package it.pagopa.ecommerce.reporting.services;
 
 import com.fasterxml.jackson.core.JacksonException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vavr.control.Either;
-import it.pagopa.ecommerce.reporting.client.EcommerceHelpdeskServiceClient;
+import it.pagopa.ecommerce.reporting.clients.EcommerceHelpdeskServiceClient;
 import it.pagopa.ecommerce.reporting.exceptions.JobConfigurationException;
-import it.pagopa.generated.ecommerce.helpdesk.v2.dto.SearchMetricsRequestDto;
-import it.pagopa.generated.ecommerce.helpdesk.v2.dto.SearchMetricsRequestTimeRangeDto;
-import it.pagopa.generated.ecommerce.helpdesk.v2.dto.TransactionMetricsResponseDto;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
 
 import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.function.Function;
+import java.util.logging.Logger;
 
-@Component
 public class ReadDataService {
 
     private final EcommerceHelpdeskServiceClient ecommerceHelpdeskServiceClient;
@@ -28,18 +23,11 @@ public class ReadDataService {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @Autowired
     public ReadDataService(
             EcommerceHelpdeskServiceClient ecommerceHelpdeskServiceClient,
-            @Value(
-                "${ecommerce.clients.list}"
-            ) Set<String> ecommerceClientList,
-            @Value(
-                "${ecommerce.paymentMethodsTypeCode.list}"
-            ) Set<String> paymentTypeCodeList,
-            @Value(
-                "${ecommerce.paymentMethods.psp.list}"
-            ) String pspList
+            Set<String> ecommerceClientList,
+            Set<String> paymentTypeCodeList,
+            String pspList
     ) {
         this.ecommerceHelpdeskServiceClient = ecommerceHelpdeskServiceClient;
         this.ecommerceClientList = ecommerceClientList;
@@ -78,7 +66,7 @@ public class ReadDataService {
         }
     }
 
-    public List<TransactionMetricsResponseDto> readData() {
+    public List<JsonNode> readData() {
         OffsetDateTime now = OffsetDateTime.now();
         OffsetDateTime startDateTime = OffsetDateTime.of(
                 now.getYear(),
@@ -100,21 +88,11 @@ public class ReadDataService {
                 0,
                 now.getOffset()
         ).minusNanos(1);
-        List<TransactionMetricsResponseDto> transactionMetricsResponseDtoList = new ArrayList<>();
+        List<JsonNode> transactionMetricsResponseDtoList = new ArrayList<>();
         ecommerceClientList.parallelStream().forEach(
                 client -> paymentTypeCodeList.parallelStream().forEach(
                         paymentMethodTypeCode -> pspList.get(paymentMethodTypeCode).parallelStream().forEach(pspId -> {
-                            SearchMetricsRequestDto searchMetricsRequestDto = new SearchMetricsRequestDto()
-                                    .clientId(client)
-                                    .paymentTypeCode(paymentMethodTypeCode)
-                                    .pspId(pspId)
-                                    .timeRange(
-                                            new SearchMetricsRequestTimeRangeDto()
-                                                    .startDate(startDateTime)
-                                                    .endDate(endDateTime)
-                                    );
-                            ecommerceHelpdeskServiceClient.searchMetrics(searchMetricsRequestDto)
-                                    .map(transactionMetricsResponseDtoList::add);
+                                    transactionMetricsResponseDtoList.add(EcommerceHelpdeskServiceClient.fetchTransactionMetrics(client,pspId,paymentMethodTypeCode,startDateTime,endDateTime, Logger.getLogger(ReadDataService.class.getName())));
                         }
 
                         )

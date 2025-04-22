@@ -1,18 +1,15 @@
 package it.pagopa.ecommerce.reporting.services;
 
-import it.pagopa.generated.ecommerce.helpdesk.v2.dto.TransactionMetricsResponseDto;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
+import com.fasterxml.jackson.databind.JsonNode;
 
+import javax.swing.*;
 import java.util.List;
 
-@Component
 public class WriteDataService {
 
-    @Autowired
     public WriteDataService() {
     }
 
-    public void writeData(List<TransactionMetricsResponseDto> metricsResponseDtos) {
+    public void writeData(List<JsonNode> metricsResponseDtos) {
     }
 }
