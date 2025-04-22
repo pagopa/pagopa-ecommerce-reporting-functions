@@ -1,0 +1,93 @@
+microservice-chart:
+  namespace: "ecommerce"
+  nameOverride: ""
+  fullnameOverride: "pagopa-ecommerce-reporting-functions"
+  image:
+    repository: pagopadcommonacr.azurecr.io/pagopaecommercereportingfunctions
+    tag: "0.14.2"
+    pullPolicy: Always
+  livenessProbe:
+    httpGet:
+      path: /liveness
+      port: 8080
+    initialDelaySeconds: 120
+    failureThreshold: 6
+    periodSeconds: 10
+  readinessProbe:
+    httpGet:
+      path: /liveness
+      port: 8080
+    initialDelaySeconds: 120
+    failureThreshold: 6
+    periodSeconds: 10
+  deployment:
+    create: true
+    replicas: 1
+  service:
+    create: true
+    type: ClusterIP
+    ports:
+      - 8080
+  ingress:
+    create: true
+    host: "weudev.ecommerce.internal.dev.platform.pagopa.it"
+    path: /ppagopa-ecommerce-reporting-functions/(.*)
+    servicePort: 8080
+  serviceAccount:
+    create: false
+    annotations: { }
+    name: "ecommerce-workload-identity"
+  podAnnotations: { }
+  podSecurityContext:
+    seccompProfile:
+      type: RuntimeDefault
+  securityContext:
+    allowPrivilegeEscalation: false
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "300m"
+    limits:
+      memory: "512Mi"
+      cpu: "300m"
+  autoscaling:
+    enable: false
+    minReplica: 1
+    maxReplica: 10
+    pollingInterval: 10 # seconds
+    cooldownPeriod: 50 # seconds
+    triggers:
+      - type: cpu
+        metadata:
+          type: Utilization # Allowed types are 'Utilization' or 'AverageValue'
+          value: "75"
+  terminationGracePeriodSeconds: 30
+  strategy:
+    type: "RollingUpdate"
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  envConfig:
+    ASPNETCORE_URLS: "http://*:8080"
+    FUNCTIONS_SECRETS_PATH: "/tmp/secrets"
+    WEBSITE_SITE_NAME: "pagopaecommercereportingfunctions" 
+    FUNCTIONS_WORKER_RUNTIME: "java"
+    TRIGGER_SCHEDULE: "0 0 5 31 2 ?" # means disable
+  envSecret:
+    OTEL_EXPORTER_OTLP_HEADERS: elastic-otel-token-header
+  keyvault:
+    name: "pagopa-d-ecommerce-kv"
+    tenantId: "7788edaf-0346-4068-9d79-c868aed15b3d"
+  nodeSelector: {}
+  tolerations: []
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: node_type
+                operator: In
+                values:
+                  - user
+  azure:
+    workloadIdentityClientId: 1be61b58-24e2-49c8-b401-89ebd004bf2e
