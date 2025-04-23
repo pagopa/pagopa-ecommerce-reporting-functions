@@ -45,7 +45,7 @@ public class ReadDataService {
         return instance;
     }
 
-    public List<JsonNode> readData() {
+    public List<JsonNode> readData(Logger logger) {
         OffsetDateTime now = OffsetDateTime.now();
         OffsetDateTime startDateTime = OffsetDateTime.of(
                 now.getYear(),
@@ -79,7 +79,7 @@ public class ReadDataService {
                                             paymentMethodTypeCode,
                                             startDateTime,
                                             endDateTime,
-                                            Logger.getLogger(ReadDataService.class.getName())
+                                            logger
                                     )
                             );
                         }
