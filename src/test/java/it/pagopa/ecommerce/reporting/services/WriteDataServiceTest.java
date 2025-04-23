@@ -60,7 +60,7 @@ class WriteDataServiceTest {
         JsonNode jsonNode = objectMapper.readTree(jsonInput);
 
         // When
-        writeDataService.writeStateMetricsInTableStorage(jsonNode, mockLogger);
+        writeDataService.writeStateMetricsInTableStorage(jsonNode, mockLogger, any(), any(), any());
 
         // Then
         verify(mockTableClient, times(1)).createEntity(any(TableEntity.class));
@@ -104,7 +104,7 @@ class WriteDataServiceTest {
                 .when(mockTableClient).createEntity(any(TableEntity.class));
 
         // When
-        writeDataService.writeStateMetricsInTableStorage(jsonNode, mockLogger);
+        writeDataService.writeStateMetricsInTableStorage(jsonNode, mockLogger, any(), any(), any());
 
         // Then
         verify(mockLogger).warning(contains("Failed to write state metrics to Azure Table Storage"));

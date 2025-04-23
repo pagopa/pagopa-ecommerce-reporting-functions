@@ -39,13 +39,12 @@ public class WriteDataService {
 
     public void writeStateMetricsInTableStorage(
                                                 JsonNode jsonNode,
-                                                Logger log
+                                                Logger log,
+                                                String clientId,
+                                                String paymentTypeCode,
+                                                String pspId
     ) {
         try {
-            String clientId = jsonNode.get("clientId").asText();
-            String paymentTypeCode = jsonNode.get("paymentTypeCode").asText();
-            String pspId = jsonNode.get("pspId").asText();
-
             Map<String, Integer> statusCounts = new HashMap<>();
             for (String status : StatusStorageFields.values) {
                 JsonNode valueNode = jsonNode.get(status);
@@ -64,9 +63,13 @@ public class WriteDataService {
 
             tableClient.createEntity(entity);
             log.info("Successfully inserted state metrics for clientId: " + clientId + ", pspId: " + pspId);
-
+            System.out.println("Successfully inserted state metrics for clientId: " + clientId + ", pspId: " + pspId);
         } catch (Exception e) {
             log.warning(
+                    "Failed to write state metrics to Azure Table Storage. Error: " + e.getMessage() +
+                            " | JSON content: " + jsonNode.toString()
+            );
+            System.out.println(
                     "Failed to write state metrics to Azure Table Storage. Error: " + e.getMessage() +
                             " | JSON content: " + jsonNode.toString()
             );

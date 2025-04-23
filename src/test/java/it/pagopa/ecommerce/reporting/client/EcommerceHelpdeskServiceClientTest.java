@@ -1,24 +1,19 @@
 package it.pagopa.ecommerce.reporting.client;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.microsoft.azure.functions.ExecutionContext;
 import it.pagopa.ecommerce.reporting.clients.EcommerceHelpdeskServiceClient;
-import org.junit.BeforeClass;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.platform.commons.logging.LoggerFactory;
-import org.junit.runner.RunWith;
+
 import org.mockito.Mock;
 import org.mockito.Spy;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
+
 import uk.org.webcompere.systemstubs.environment.EnvironmentVariables;
 import uk.org.webcompere.systemstubs.jupiter.SystemStub;
 import uk.org.webcompere.systemstubs.jupiter.SystemStubsExtension;
 
-import java.time.OffsetDateTime;
 import java.util.logging.Logger;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -36,7 +31,6 @@ public class EcommerceHelpdeskServiceClientTest {
             "HELPDESK_SERVICE_API_ENDPOINT",
             "/apiEndpoint"
     );
-
 
     private Logger mockLogger;
 
