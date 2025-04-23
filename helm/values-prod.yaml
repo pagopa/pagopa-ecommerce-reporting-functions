@@ -72,10 +72,22 @@ microservice-chart:
     FUNCTIONS_SECRETS_PATH: "/tmp/secrets"
     WEBSITE_SITE_NAME: "pagopaecommercereportingfunctions" 
     FUNCTIONS_WORKER_RUNTIME: "java"
-    TRIGGER_SCHEDULE: "0 0 5 31 2 ?" # means disable
+    ECOMMERCE_CLIENTS_LIST: "[\"IO\",\"CHECKOUT\",\"CHECKOUT_CART\",\"WISP_REDIRECT\"]"
+    ECOMMERCE_PAYMENT_METHODS_TYPE_CODE_LIST: "[\"CP\",\"PPAL\",\"BPAY\",\"RPIC\",\"RBPS\",\"RBPP\",\"RBPR\",\"MYBK\",\"SATY\",\"APPL\",\"RICO\",\"GOOG\"]"
+    ECOMMERCE_PAYMENT_METHODS_PSP_LIST: "{\"CP\":[\"BCITIMM\",\"PAYPTRIXX\"],\"PPAL\":[\"BCITIMM\",\"SATY\"]}"
+    HELPDESK_SERVICE_URI: "https://api.platform.pagopa.it/ecommerce/helpdesk-service/v2"
+    HELPDESK_SERVICE_API_ENDPOINT: "/ecommerce/searchMetrics"
+    ECOMMERCE_REPORTING_TABLE: "TransactionStatusReporting"
+    NCRON_SCHEDULE_CHECKOUT: "0 1 * * * *"
+    NCRON_SCHEDULE_IO: "0 11 * * * *"
+    NCRON_SCHEDULE_CHECKOUT_CART: "0 21 * * * *"
+    NCRON_SCHEDULE_WISP_REDIRECT: "0 31 * * * *"
   envSecret:
     OTEL_EXPORTER_OTLP_HEADERS: elastic-otel-token-header
-    ECOMMERCE_SLACK_REPORTING_WEBHOOK_ENDPOINT: ecommerce_reporting_webhook_url_slack
+    ECOMMERCE_SLACK_REPORTING_WEBHOOK_ENDPOINT: ecommerce-reporting-webhook-url-slack
+    AzureWebJobsStorage: ecommerce-storage-reporting-connection-string
+    HELPDESK_SERVICE_API_KEY: helpdesk-service-api-key-for-reporting
+    ECOMMERCE_REPORTING_CONNECTION_STRING: ecommerce-storage-reporting-connection-string
   keyvault:
     name: "pagopa-p-ecommerce-kv"
     tenantId: "7788edaf-0346-4068-9d79-c868aed15b3d"
