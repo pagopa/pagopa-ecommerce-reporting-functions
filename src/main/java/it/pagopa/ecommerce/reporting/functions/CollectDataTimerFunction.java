@@ -30,8 +30,10 @@ public class CollectDataTimerFunction {
                                          ) String timerInfo,
                                          ExecutionContext context
     ) {
+
         String clientId = "CHECKOUT";
         executeFunction(timerInfo, context, clientId);
+
     }
 
     @FunctionName("readAndWriteData_IO")

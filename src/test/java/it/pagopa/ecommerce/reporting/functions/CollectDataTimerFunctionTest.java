@@ -49,3 +49,4 @@ public class CollectDataTimerFunctionTest {
      * times(1)).writeData(new ArrayList<>()); }
      */
 }
+
