@@ -33,14 +33,14 @@ public class SlackReportingTimerTriggered {
         Logger logger = context.getLogger();
         logger.info("Java Timer trigger SlackReportingTimerTriggered executed at: " + LocalDateTime.now());
 
-        String endpoint = System.getenv("ECOMMERCE_SLACK_REPORTING_WEBHOOK_ENDPOINT");
+        String endpoint = getEnvVariable("ECOMMERCE_SLACK_REPORTING_WEBHOOK_ENDPOINT");
 
-        SlackWebhookClient slackWebhookClient = new SlackWebhookClient(endpoint);
-        LocalDate today = LocalDate.now();
+        SlackWebhookClient slackWebhookClient = createSlackWebhookClient(endpoint);
+        LocalDate today = getCurrentDate();
         LocalDate lastMonday = today.minusWeeks(1).with(DayOfWeek.MONDAY);
         LocalDate lastSunday = lastMonday.with(DayOfWeek.SUNDAY);
 
-        TransactionStatusAggregationService transactionStatusAggregationService = new TransactionStatusAggregationService();
+        TransactionStatusAggregationService transactionStatusAggregationService = createAggregationService();
         List<AggregatedStatusGroup> aggregatedStatuses = transactionStatusAggregationService
                 .aggregateStatusCountByDateRange(lastMonday, lastSunday, logger);
 
@@ -53,5 +53,43 @@ public class SlackReportingTimerTriggered {
                 .createAggregatedWeeklyReport(aggregatedStatuses, lastMonday, lastSunday, logger);
         // Send it to Slack
         slackWebhookClient.postMessageToWebhook(report);
+    }
+
+    /**
+     * Gets an environment variable value
+     *
+     * @param name The name of the environment variable
+     * @return The value of the environment variable
+     */
+    protected String getEnvVariable(String name) {
+        return System.getenv(name);
+    }
+
+    /**
+     * Gets the current date
+     *
+     * @return The current date
+     */
+    protected LocalDate getCurrentDate() {
+        return LocalDate.now();
+    }
+
+    /**
+     * Creates a new TransactionStatusAggregationService
+     *
+     * @return A new TransactionStatusAggregationService instance
+     */
+    protected TransactionStatusAggregationService createAggregationService() {
+        return new TransactionStatusAggregationService();
+    }
+
+    /**
+     * Creates a new SlackWebhookClient
+     *
+     * @param endpoint The webhook endpoint URL
+     * @return A new SlackWebhookClient instance
+     */
+    protected SlackWebhookClient createSlackWebhookClient(String endpoint) {
+        return new SlackWebhookClient(endpoint);
     }
 }

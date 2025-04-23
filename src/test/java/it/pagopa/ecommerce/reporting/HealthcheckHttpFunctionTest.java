@@ -53,11 +53,6 @@ class HealthcheckHttpFunctionTest {
         // test execution
         HttpResponseMessage response = infoFunction.run(request, context);
         assertEquals(HttpStatus.OK, response.getStatus());
-        /*
-         * HttpResponseMessage response = infoFunction.run(request, context);
-         *
-         * // test assertion assertEquals(HttpStatus.OK, response.getStatus());
-         */
     }
 
     @SneakyThrows
