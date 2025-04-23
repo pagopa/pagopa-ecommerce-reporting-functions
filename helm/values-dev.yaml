@@ -75,6 +75,7 @@ microservice-chart:
     TRIGGER_SCHEDULE: "0 0 5 31 2 ?" # means disable
   envSecret:
     OTEL_EXPORTER_OTLP_HEADERS: elastic-otel-token-header
+    ECOMMERCE_SLACK_REPORTING_WEBHOOK_ENDPOINT: ecommerce_reporting_webhook_url_slack
   keyvault:
     name: "pagopa-d-ecommerce-kv"
     tenantId: "7788edaf-0346-4068-9d79-c868aed15b3d"

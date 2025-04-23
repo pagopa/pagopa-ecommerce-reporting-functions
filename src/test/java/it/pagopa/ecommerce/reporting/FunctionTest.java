@@ -48,9 +48,5 @@ public class FunctionTest {
         final ExecutionContext context = mock(ExecutionContext.class);
         doReturn(Logger.getGlobal()).when(context).getLogger();
 
-        // Invoke
-        // new PagopaEcommerceReporting().run("test", context);
-
-        // Verify
     }
 }
