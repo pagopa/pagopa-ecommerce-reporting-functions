@@ -1,0 +1,384 @@
+package it.pagopa.ecommerce.reporting.functions;
+
+import com.microsoft.azure.functions.ExecutionContext;
+import it.pagopa.ecommerce.reporting.clients.SlackWebhookClient;
+import it.pagopa.ecommerce.reporting.services.TransactionStatusAggregationService;
+import it.pagopa.ecommerce.reporting.utils.AggregatedStatusGroup;
+import it.pagopa.ecommerce.reporting.utils.SlackDateRangeReportMessageUtils;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.*;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.logging.Logger;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+class SlackReportingTimerTriggeredTest {
+
+    @Mock
+    private ExecutionContext mockContext;
+
+    @Mock
+    private Logger mockLogger;
+
+    @Mock
+    private TransactionStatusAggregationService mockAggregationService;
+
+    @Mock
+    private SlackWebhookClient mockSlackWebhookClient;
+
+    @Captor
+    private ArgumentCaptor<LocalDate> startDateCaptor;
+
+    @Captor
+    private ArgumentCaptor<LocalDate> endDateCaptor;
+
+    @Captor
+    private ArgumentCaptor<String> reportCaptor;
+
+    @BeforeEach
+    void setUp() {
+        when(mockContext.getLogger()).thenReturn(mockLogger);
+    }
+
+    /**
+     * Test class that extends the original class to allow for mocking
+     */
+    private static class TestableSlackReportingTimerTriggered extends SlackReportingTimerTriggered {
+        private final String webhookEndpoint;
+        private final LocalDate fixedDate;
+        private final TransactionStatusAggregationService aggregationService;
+        private final SlackWebhookClient slackWebhookClient;
+
+        public TestableSlackReportingTimerTriggered(
+                String webhookEndpoint,
+                LocalDate fixedDate,
+                TransactionStatusAggregationService aggregationService,
+                SlackWebhookClient slackWebhookClient
+        ) {
+            this.webhookEndpoint = webhookEndpoint;
+            this.fixedDate = fixedDate;
+            this.aggregationService = aggregationService;
+            this.slackWebhookClient = slackWebhookClient;
+        }
+
+        @Override
+        protected String getEnvVariable(String name) {
+            if ("ECOMMERCE_SLACK_REPORTING_WEBHOOK_ENDPOINT".equals(name)) {
+                return webhookEndpoint;
+            }
+            return null;
+        }
+
+        @Override
+        protected LocalDate getCurrentDate() {
+            return fixedDate;
+        }
+
+        @Override
+        protected TransactionStatusAggregationService createAggregationService() {
+            return aggregationService;
+        }
+
+        @Override
+        protected SlackWebhookClient createSlackWebhookClient(String endpoint) {
+            return slackWebhookClient;
+        }
+    }
+
+    @Test
+    void shouldUseCorrectDateRangeForLastWeek() throws Exception {
+
+        String timerInfo = "timer info";
+        String mockEndpoint = "https://hooks.slack-mock.com/services/test/webhook";
+
+        // Test with different days of the week to ensure correct "last week"
+        // calculation
+        LocalDate[] testDates = {
+                LocalDate.of(2025, 4, 21), // Monday
+                LocalDate.of(2025, 4, 22), // Tuesday
+                LocalDate.of(2025, 4, 23), // Wednesday
+                LocalDate.of(2025, 4, 24), // Thursday
+                LocalDate.of(2025, 4, 25), // Friday
+                LocalDate.of(2025, 4, 26), // Saturday
+                LocalDate.of(2025, 4, 27) // Sunday
+        };
+
+        for (LocalDate today : testDates) {
+            // Calculate expected date range
+            LocalDate expectedLastMonday = today.minusWeeks(1).with(DayOfWeek.MONDAY);
+            LocalDate expectedLastSunday = expectedLastMonday.with(DayOfWeek.SUNDAY);
+
+            // Mock the aggregation service to return empty results
+            when(
+                    mockAggregationService.aggregateStatusCountByDateRange(
+                            startDateCaptor.capture(),
+                            endDateCaptor.capture(),
+                            eq(mockLogger)
+                    )
+            )
+                    .thenReturn(new ArrayList<>());
+
+            // Mock the report creation
+            try (MockedStatic<SlackDateRangeReportMessageUtils> mockedReportUtils = Mockito
+                    .mockStatic(SlackDateRangeReportMessageUtils.class)) {
+                mockedReportUtils.when(
+                        () -> SlackDateRangeReportMessageUtils.createAggregatedWeeklyReport(
+                                any(),
+                                any(),
+                                any(),
+                                any()
+                        )
+                ).thenReturn("Report");
+
+                // Create testable instance
+                TestableSlackReportingTimerTriggered function = new TestableSlackReportingTimerTriggered(
+                        mockEndpoint,
+                        today,
+                        mockAggregationService,
+                        mockSlackWebhookClient
+                );
+
+                function.run(timerInfo, mockContext);
+
+                assertEquals(
+                        expectedLastMonday,
+                        startDateCaptor.getValue(),
+                        "Start date should be last Monday for current date: " + today
+                );
+                assertEquals(
+                        expectedLastSunday,
+                        endDateCaptor.getValue(),
+                        "End date should be last Sunday for current date: " + today
+                );
+
+                // Reset mocks for next iteration
+                reset(mockAggregationService, mockSlackWebhookClient);
+            }
+        }
+    }
+
+    @Test
+    void shouldUseCorrectEndpointFromEnvironment() throws Exception {
+
+        String timerInfo = "timer info";
+        LocalDate fixedToday = LocalDate.of(2025, 4, 21);
+        String mockEndpoint = "https://hooks.slack-mock.com/services/test/webhook";
+
+        // Mock the aggregation service to return empty results
+        when(mockAggregationService.aggregateStatusCountByDateRange(any(), any(), any()))
+                .thenReturn(new ArrayList<>());
+
+        // Mock the report creation
+        try (MockedStatic<SlackDateRangeReportMessageUtils> mockedReportUtils = Mockito
+                .mockStatic(SlackDateRangeReportMessageUtils.class)) {
+            mockedReportUtils.when(
+                    () -> SlackDateRangeReportMessageUtils.createAggregatedWeeklyReport(
+                            any(),
+                            any(),
+                            any(),
+                            any()
+                    )
+            ).thenReturn("Report");
+
+            // Create testable instance
+            TestableSlackReportingTimerTriggered function = new TestableSlackReportingTimerTriggered(
+                    mockEndpoint,
+                    fixedToday,
+                    mockAggregationService,
+                    mockSlackWebhookClient
+            );
+
+            function.run(timerInfo, mockContext);
+
+            // Verify that the SlackWebhookClient was called with the report
+            verify(mockSlackWebhookClient).postMessageToWebhook(anyString());
+        }
+    }
+
+    @Test
+    void shouldLogAppropriateMessages() throws Exception {
+
+        String timerInfo = "timer info";
+        LocalDate fixedToday = LocalDate.of(2025, 4, 21); // A Monday
+        LocalDate expectedLastMonday = fixedToday.minusWeeks(1);
+        LocalDate expectedLastSunday = expectedLastMonday.with(DayOfWeek.SUNDAY);
+        String mockEndpoint = "https://hooks.slack-mock.com/services/test/webhook";
+
+        List<AggregatedStatusGroup> mockAggregatedStatuses = new ArrayList<>();
+        // Add a few status groups with the correct constructor
+        List<String> statusFields = Arrays.asList("ACTIVATED", "CLOSED", "NOTIFIED_OK", "EXPIRED");
+
+        AggregatedStatusGroup group1 = new AggregatedStatusGroup(
+                "2023-05-08",
+                "clientA",
+                "pspX",
+                "PT1",
+                statusFields
+        );
+        mockAggregatedStatuses.add(group1);
+
+        AggregatedStatusGroup group2 = new AggregatedStatusGroup(
+                "2023-05-09",
+                "clientB",
+                "pspY",
+                "PT2",
+                statusFields
+        );
+        mockAggregatedStatuses.add(group2);
+
+        // Mock the aggregation service to return our mock statuses
+        when(
+                mockAggregationService.aggregateStatusCountByDateRange(
+                        eq(expectedLastMonday),
+                        eq(expectedLastSunday),
+                        any(Logger.class)
+                )
+        )
+                .thenReturn(mockAggregatedStatuses);
+
+        // Mock the report creation
+        String mockReport = "Weekly Report Content";
+        try (MockedStatic<SlackDateRangeReportMessageUtils> mockedReportUtils = Mockito
+                .mockStatic(SlackDateRangeReportMessageUtils.class)) {
+            mockedReportUtils.when(
+                    () -> SlackDateRangeReportMessageUtils.createAggregatedWeeklyReport(
+                            eq(mockAggregatedStatuses),
+                            eq(expectedLastMonday),
+                            eq(expectedLastSunday),
+                            any(Logger.class)
+                    )
+            )
+                    .thenReturn(mockReport);
+
+            // Create testable instance
+            TestableSlackReportingTimerTriggered function = new TestableSlackReportingTimerTriggered(
+                    mockEndpoint,
+                    fixedToday,
+                    mockAggregationService,
+                    mockSlackWebhookClient
+            );
+
+            function.run(timerInfo, mockContext);
+
+            // Verify execution start log
+            verify(mockLogger).info(matches("Java Timer trigger SlackReportingTimerTriggered executed at: .*"));
+
+            // Verify date range and results count log
+            verify(mockLogger).info(
+                    "Start date: " + expectedLastMonday + " to date: " + expectedLastSunday +
+                            ", results: " + mockAggregatedStatuses.size()
+            );
+
+            // Verify the webhook client was called with the correct report
+            verify(mockSlackWebhookClient).postMessageToWebhook(mockReport);
+        }
+    }
+
+    @Test
+    void shouldHandleMissingEndpointEnvironmentVariable() {
+
+        String timerInfo = "timer info";
+        LocalDate fixedToday = LocalDate.of(2025, 4, 21);
+
+        // Create a testable instance that returns null for the endpoint
+        // AND returns null for the SlackWebhookClient to simulate the real behavior
+        TestableSlackReportingTimerTriggered function = new TestableSlackReportingTimerTriggered(
+                null,
+                fixedToday,
+                mockAggregationService,
+                null
+        ) {
+            @Override
+            protected SlackWebhookClient createSlackWebhookClient(String endpoint) {
+                // This simulates the real behavior - when endpoint is null,
+                // passing it to the SlackWebhookClient constructor would throw
+                // NullPointerException
+                if (endpoint == null) {
+                    throw new NullPointerException("Endpoint cannot be null");
+                }
+                return mockSlackWebhookClient;
+            }
+        };
+
+        // The function should throw NullPointerException when endpoint is null
+        assertThrows(NullPointerException.class, () -> function.run(timerInfo, mockContext));
+    }
+
+    @Test
+    void shouldHandleExceptionFromAggregationService() throws Exception {
+
+        String timerInfo = "timer info";
+        LocalDate fixedToday = LocalDate.of(2025, 4, 21);
+        String mockEndpoint = "https://hooks.slack-mock.com/services/test/webhook";
+
+        // Mock the aggregation service to throw an exception
+        when(mockAggregationService.aggregateStatusCountByDateRange(any(), any(), any()))
+                .thenThrow(new RuntimeException("Database error"));
+
+        // Create testable instance
+        TestableSlackReportingTimerTriggered function = new TestableSlackReportingTimerTriggered(
+                mockEndpoint,
+                fixedToday,
+                mockAggregationService,
+                mockSlackWebhookClient
+        );
+
+        assertThrows(RuntimeException.class, () -> function.run(timerInfo, mockContext));
+
+        // Verify the webhook client was not called
+        verify(mockSlackWebhookClient, never()).postMessageToWebhook(anyString());
+    }
+
+    @Test
+    void shouldHandleExceptionFromSlackClient() throws Exception {
+
+        String timerInfo = "timer info";
+        LocalDate fixedToday = LocalDate.of(2025, 4, 21);
+        String mockEndpoint = "https://hooks.slack-mock.com/services/test/webhook";
+
+        // Mock the aggregation service to return empty results
+        when(mockAggregationService.aggregateStatusCountByDateRange(any(), any(), any()))
+                .thenReturn(new ArrayList<>());
+
+        // Mock the report creation
+        try (MockedStatic<SlackDateRangeReportMessageUtils> mockedReportUtils = Mockito
+                .mockStatic(SlackDateRangeReportMessageUtils.class)) {
+            mockedReportUtils.when(
+                    () -> SlackDateRangeReportMessageUtils.createAggregatedWeeklyReport(
+                            any(),
+                            any(),
+                            any(),
+                            any()
+                    )
+            ).thenReturn("Report");
+
+            // Mock the webhook client to throw a RuntimeException instead of
+            // JsonProcessingException
+            doThrow(new RuntimeException("Error sending to Slack")).when(mockSlackWebhookClient)
+                    .postMessageToWebhook(anyString());
+
+            // Create testable instance
+            TestableSlackReportingTimerTriggered function = new TestableSlackReportingTimerTriggered(
+                    mockEndpoint,
+                    fixedToday,
+                    mockAggregationService,
+                    mockSlackWebhookClient
+            );
+
+            // Since we're throwing RuntimeException, we should expect an exception
+            assertThrows(RuntimeException.class, () -> function.run(timerInfo, mockContext));
+        }
+    }
+}

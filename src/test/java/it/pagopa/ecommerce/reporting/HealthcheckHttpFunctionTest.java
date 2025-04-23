@@ -9,6 +9,7 @@ import static org.mockito.Mockito.mock;
 import java.util.Optional;
 import java.util.logging.Logger;
 
+import it.pagopa.ecommerce.reporting.functions.HealthcheckHttpFunction;
 import lombok.SneakyThrows;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,7 +30,7 @@ class HealthcheckHttpFunctionTest {
     @Mock
     HttpRequestMessage<Optional<String>> request;
 
-	@Mock
+    @Mock
     ExecutionContext context;
 
     @Spy
@@ -51,8 +52,6 @@ class HealthcheckHttpFunctionTest {
 
         // test execution
         HttpResponseMessage response = infoFunction.run(request, context);
-
-        // test assertion
         assertEquals(HttpStatus.OK, response.getStatus());
     }
 

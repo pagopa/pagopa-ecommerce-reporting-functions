@@ -33,6 +33,12 @@ Before you begin, make sure you have the following tools installed:
 ### Install Dependencies
 The project uses Maven for dependency management. Run the following command to download the required dependencies:
 
+### Install Azure Functions core tools
+```bash
+brew install azure-functions-core-tools@4
+brew tap azure/functions
+```
+
 ```bash
 mvn clean install
 Configure Azure Functions
@@ -41,12 +47,12 @@ Create the necessary Azure Function configurations (e.g., connection strings, AP
 
 ```json
 {
-  "IsEncrypted": false,
-  "Values": {
-    "FUNCTIONS_WORKER_RUNTIME": "java",
-    "AzureWebJobsStorage": "<your-storage-connection-string>",
-    "YourApiKey": "<your-api-key>"
-  }
+	"IsEncrypted": false,
+	"Values": {
+		"FUNCTIONS_WORKER_RUNTIME": "java",
+		"AzureWebJobsStorage": "<your-storage-connection-string>",
+		"YourApiKey": "<your-api-key>"
+	}
 }
 ```
 
@@ -56,6 +62,13 @@ You can test the function locally using the Azure Functions Core Tools. Run the 
 ```bash
 mvn azure-functions:run
 This will start the Azure Function locally, and you can test it with HTTP requests or other configured triggers.
+```
+
+## Run Azurite
+Ref.: https://learn.microsoft.com/en-us/azure/storage/common/storage-use-azurite?tabs=docker-hub%2Cblob-storage
+Ex.:
+```bash
+docker run -p 10000:10000 -p 10001:10001 -p 10002:10002 mcr.microsoft.com/azure-storage/azurite
 ```
 
 ## Run the application with `Docker`

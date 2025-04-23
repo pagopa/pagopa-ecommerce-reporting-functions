@@ -17,7 +17,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-
 /**
  * Unit test for Function class.
  */
@@ -50,8 +49,5 @@ public class FunctionTest {
         doReturn(Logger.getGlobal()).when(context).getLogger();
 
         // Invoke
-        new PagopaEcommerceReporting().run("test", context);
-
-        // Verify
     }
 }

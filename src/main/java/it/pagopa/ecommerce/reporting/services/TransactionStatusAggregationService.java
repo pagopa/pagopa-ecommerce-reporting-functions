@@ -18,61 +18,69 @@ import java.util.Map;
 import java.util.logging.Logger;
 
 /**
- * Service class to aggregate status counts for transactions within a given date range.
- * The aggregation is performed on the data stored in an eCommerce reporting Azure Table Storage.
- * 
- * To use:
- * private static final String CONNECTION_STRING = System.getenv("ECOMMERCE_REPORTING_CONNECTION_STRING");
- * private static final String TRANSACTIONS_STATUS_TABLE = "StateReporting";
- * TableClient tableClient = new TableClientBuilder()
- *   .connectionString(CONNECTION_STRING)
- *   .tableName(TRANSACTIONS_STATUS_TABLE)
- *   .buildClient();
- * LocalDate today = LocalDate.now();
- * LocalDate lastMonday = today.minusWeeks(1).with(DayOfWeek.MONDAY);
- * LocalDate lastSunday = lastMonday.with(DayOfWeek.SUNDAY);
- * List<AggregatedStatusGroup> aggregated = TransactionStatusAggregationService.aggregateStatusCountByDateRange(lastMonday, lastSunday, logger);
+ * Service class to aggregate status counts for transactions within a given date
+ * range. The aggregation is performed on the data stored in an eCommerce
+ * reporting Azure Table Storage. To use: <code>
+ *     private static final StringCONNECTION_STRING =
+ *     System.getenv("ECOMMERCE_REPORTING_CONNECTION_STRING");
+ *     private static final String TRANSACTIONS_STATUS_TABLE = "StateReporting";
+ *     TableClient tableClient = new TableClientBuilder() .connectionString(CONNECTION_STRING).tableName(TRANSACTIONS_STATUS_TABLE) .buildClient();
+ *     LocalDate today = LocalDate.now();
+ *     LocalDate lastMonday = today.minusWeeks(1).with(DayOfWeek.MONDAY);
+ *     LocalDate lastSunday = lastMonday.with(DayOfWeek.SUNDAY);
+ *     List<AggregatedStatusGroup> aggregated = TransactionStatusAggregationService.aggregateStatusCountByDateRange(lastMonday, lastSunday, logger);
+ * </code>
  */
 public class TransactionStatusAggregationService {
 
-
     private final String CONNECTION_STRING = System.getenv("ECOMMERCE_REPORTING_CONNECTION_STRING");
     private final String TRANSACTIONS_STATUS_TABLE = "StateReporting";
-    
-    private final List<String> STATUS_FIELDS = Arrays.asList(
-        "ACTIVATED", "CLOSED", "NOTIFIED_OK", "EXPIRED", "REFUNDED", "CANCELED",
-        "EXPIRED_NOT_AUTHORIZED", "UNAUTHORIZED", "REFUND_ERROR", "REFUND_REQUESTED",
-        "CANCELLATION_REQUESTED", "CANCELLATION_EXPIRED", "AUTHORIZATION_REQUESTED",
-        "AUTHORIZATION_COMPLETED", "CLOSURE_REQUESTED", "CLOSURE_ERROR"
-    );
 
+    private final List<String> STATUS_FIELDS = Arrays.asList(
+            "ACTIVATED",
+            "CLOSED",
+            "NOTIFIED_OK",
+            "EXPIRED",
+            "REFUNDED",
+            "CANCELED",
+            "EXPIRED_NOT_AUTHORIZED",
+            "UNAUTHORIZED",
+            "REFUND_ERROR",
+            "REFUND_REQUESTED",
+            "CANCELLATION_REQUESTED",
+            "CANCELLATION_EXPIRED",
+            "AUTHORIZATION_REQUESTED",
+            "AUTHORIZATION_COMPLETED",
+            "CLOSURE_REQUESTED",
+            "CLOSURE_ERROR"
+    );
 
     private final TableClient tableClient;
 
     public TransactionStatusAggregationService() {
         this.tableClient = new TableClientBuilder()
-            .connectionString(CONNECTION_STRING)
-            .tableName(TRANSACTIONS_STATUS_TABLE)
-            .buildClient();
+                .connectionString(CONNECTION_STRING)
+                .tableName(TRANSACTIONS_STATUS_TABLE)
+                .buildClient();
     }
 
     public TransactionStatusAggregationService(TableClient tableClient) {
         this.tableClient = tableClient;
     }
-    
+
     /**
      * Aggregates the status counts for transactions in a specified date range.
-     * 
+     *
      * @param startDate the start date of the aggregation period
-     * @param endDate the end date of the aggregation period
-     * @param logger the logger to log information during processing
-     * @return a list of aggregated status counts for each unique combination of partition key, 
-     *         client ID, PSP ID, and payment type code
+     * @param endDate   the end date of the aggregation period
+     * @param logger    the logger to log information during processing
+     * @return a list of aggregated status counts for each unique combination of
+     *         partition key, client ID, PSP ID, and payment type code
      */
     public List<AggregatedStatusGroup> aggregateStatusCountByDateRange(
-        LocalDate startDate,
-        LocalDate endDate,
-        Logger logger
+                                                                       LocalDate startDate,
+                                                                       LocalDate endDate,
+                                                                       Logger logger
     ) {
 
         logger.info("[aggregateStatusCountByDateRange] Execution started.");
@@ -88,9 +96,9 @@ public class TransactionStatusAggregationService {
             String partitionKey = formatter.format(date);
 
             PagedIterable<TableEntity> entities = tableClient.listEntities(
-                new ListEntitiesOptions().setFilter(String.format("PartitionKey eq '%s'", partitionKey)),
-                null,
-                null
+                    new ListEntitiesOptions().setFilter(String.format("PartitionKey eq '%s'", partitionKey)),
+                    null,
+                    null
             );
 
             logger.info("[aggregateStatusCountByDateRange] Found " + entities.stream().count() + " entities");
@@ -116,7 +124,7 @@ public class TransactionStatusAggregationService {
                 }
             }
         }
-            
+
         List<AggregatedStatusGroup> aggregated = new ArrayList<>(aggregatedMap.values());
 
         logger.info("[aggregateStatusCountByDateRange] Aggregation transaction status completed.");
