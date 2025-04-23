@@ -1,6 +1,7 @@
 package it.pagopa.ecommerce.reporting.services;
 
 import com.azure.data.tables.TableAsyncClient;
+import com.azure.data.tables.TableClient;
 import com.azure.data.tables.TableClientBuilder;
 import com.azure.data.tables.models.TableTransactionAction;
 import com.azure.data.tables.models.TableTransactionActionType;
@@ -16,12 +17,19 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class WriteDataService {
 
     private static WriteDataService instance = null;
     private final String storageConnectionString = System.getenv("ECOMMERCE_REPORTING_CONNECTION_STRING");
     private final String tableName = System.getenv("ECOMMERCE_REPORTING_TABLE");
+    private final TableClient tableClient;
+
+    private WriteDataService() {
+        tableClient = new TableClientBuilder()
+                .connectionString(storageConnectionString)
+                .tableName(tableName)
+                .buildClient();
+    }
 
     public static WriteDataService getInstance() {
         if (instance == null) {
@@ -33,10 +41,7 @@ public class WriteDataService {
     public void writeData(List<JsonNode> metricsResponseDtos) {
         // try {
         // get the table
-        TableAsyncClient tableAsyncClient = new TableClientBuilder()
-                .connectionString(storageConnectionString)
-                .tableName(tableName)
-                .buildAsyncClient();
+
         List<TableTransactionAction> transactionActions = new ArrayList<>();
 
         metricsResponseDtos.forEach(jsonNode -> {
@@ -57,16 +62,10 @@ public class WriteDataService {
             );
         });
 
-        tableAsyncClient.submitTransaction(transactionActions)
-                // .contextWrite(Context.of("key1", "value1", "key2", "value2"))
-                .subscribe(tableTransactionResult -> {
-                    System.out.print("Submitted transaction. The ordered response status codes for the actions are:");
-
-                    tableTransactionResult.getTransactionActionResponses().forEach(
-                            tableTransactionActionResponse -> System.out
-                                    .printf("%n%d", tableTransactionActionResponse.getStatusCode())
-                    );
-                });
+        tableClient.submitTransaction(transactionActions).getTransactionActionResponses().forEach(
+                tableTransactionActionResponse -> System.out
+                        .printf("%n%d", tableTransactionActionResponse.getStatusCode())
+        );
 
         /*
          * } catch (URISyntaxException | InvalidKeyException |) { //exception }
