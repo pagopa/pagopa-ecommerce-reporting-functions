@@ -8,7 +8,7 @@ import com.microsoft.azure.functions.annotation.HttpTrigger;
 import it.pagopa.ecommerce.reporting.clients.SlackWebhookClient;
 import it.pagopa.ecommerce.reporting.services.TransactionStatusAggregationService;
 import it.pagopa.ecommerce.reporting.utils.AggregatedStatusGroup;
-import it.pagopa.ecommerce.reporting.utils.SlackWeeklyReportMessageUtils;
+import it.pagopa.ecommerce.reporting.utils.SlackDateRangeReportMessageUtils;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -42,7 +42,7 @@ public class SlackReportingTimerTriggered {
         // Post the weekly report to Slack
         // Mock data, TODO: use Simo service
         // List<AggregatedStatusGroup> aggregatedStatuses =
-        // SlackWeeklyReportMessageUtils.createMockData();
+        // SlackDateRangeReportMessageUtils.createMockData();
 
         LocalDate today = LocalDate.now();
         LocalDate lastMonday = today.minusWeeks(1).with(DayOfWeek.MONDAY);
@@ -56,7 +56,7 @@ public class SlackReportingTimerTriggered {
                 "Start date: " + lastMonday + " to date: " + lastSunday + ", results: " + aggregatedStatuses.size()
         );
 
-        String report = SlackWeeklyReportMessageUtils.createAggregatedWeeklyReport(aggregatedStatuses);
+        String report = SlackDateRangeReportMessageUtils.createAggregatedWeeklyReport(aggregatedStatuses, lastMonday, lastSunday, logger);
         SlackWebhookClient.postMessageToWebhook(report);
     }
 }
