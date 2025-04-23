@@ -60,7 +60,7 @@ class WriteDataServiceTest {
         JsonNode jsonNode = objectMapper.readTree(jsonInput);
 
         // When
-        writeDataService.writeStateMetricsInTableStorage(jsonNode, mockLogger, any(), any(), any());
+        writeDataService.writeStateMetricsInTableStorage(jsonNode, mockLogger, "clientId", "paymentTypeCode", "pspId");
 
         // Then
         verify(mockTableClient, times(1)).createEntity(any(TableEntity.class));
