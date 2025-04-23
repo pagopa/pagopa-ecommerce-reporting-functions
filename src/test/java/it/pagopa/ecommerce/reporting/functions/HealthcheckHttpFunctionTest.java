@@ -1,4 +1,4 @@
-package it.pagopa.ecommerce.reporting;
+package it.pagopa.ecommerce.reporting.functions;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
