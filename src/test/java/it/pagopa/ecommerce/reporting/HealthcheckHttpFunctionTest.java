@@ -51,6 +51,8 @@ class HealthcheckHttpFunctionTest {
         doReturn(builder).when(builder).header(anyString(), anyString());
 
         // test execution
+        HttpResponseMessage response = infoFunction.run(request, context);
+        assertEquals(HttpStatus.OK, response.getStatus());
         /*
          * HttpResponseMessage response = infoFunction.run(request, context);
          *

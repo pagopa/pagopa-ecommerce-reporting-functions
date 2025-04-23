@@ -56,7 +56,8 @@ public class SlackReportingTimerTriggered {
                 "Start date: " + lastMonday + " to date: " + lastSunday + ", results: " + aggregatedStatuses.size()
         );
 
-        String report = SlackDateRangeReportMessageUtils.createAggregatedWeeklyReport(aggregatedStatuses, lastMonday, lastSunday, logger);
+        String report = SlackDateRangeReportMessageUtils
+                .createAggregatedWeeklyReport(aggregatedStatuses, lastMonday, lastSunday, logger);
         SlackWebhookClient.postMessageToWebhook(report);
     }
 }

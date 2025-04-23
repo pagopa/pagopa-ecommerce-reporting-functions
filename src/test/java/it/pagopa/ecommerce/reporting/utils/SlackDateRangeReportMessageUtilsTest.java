@@ -1,0 +1,485 @@
+package it.pagopa.ecommerce.reporting.utils;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.time.LocalDate;
+import java.util.*;
+import java.util.logging.Logger;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+@ExtendWith(MockitoExtension.class)
+class SlackDateRangeReportMessageUtilsTest {
+
+    @Mock
+    private Logger mockLogger;
+
+    @Test
+    void shouldFormatDateInItalianLocale() {
+        // Given
+        LocalDate date = LocalDate.of(2023, 5, 15);
+
+        // When
+        String result = SlackDateRangeReportMessageUtils.formatDate(date);
+
+        // Then
+        assertEquals("15 maggio 2023", result);
+    }
+
+    @Test
+    void shouldFormatStatusDetailsCorrectly() {
+        // Given
+        Map<String, Integer> statusCounts = new LinkedHashMap<>();
+        statusCounts.put("ACTIVATED", 100);
+        statusCounts.put("NOTIFIED_OK", 80);
+        statusCounts.put("UNKNOWN_STATUS", 5);
+
+        // When
+        String result = SlackDateRangeReportMessageUtils.formatStatusDetails(statusCounts);
+
+        // Then
+        assertTrue(result.contains(":white_check_mark: *Attivate*: 100"));
+        assertTrue(result.contains(":tada: *Complete con notifica*: 80"));
+        assertTrue(result.contains(":black_circle: *UNKNOWN_STATUS*: 5"));
+    }
+
+    @Test
+    void shouldSortStatusKeysAlphabetically() {
+        // Given
+        Map<String, Integer> statusCounts = new HashMap<>();
+        statusCounts.put("CLOSED", 30);
+        statusCounts.put("ACTIVATED", 100);
+        statusCounts.put("EXPIRED", 20);
+
+        // When
+        String result = SlackDateRangeReportMessageUtils.formatStatusDetails(statusCounts);
+
+        // Then
+        int activatedIndex = result.indexOf("Attivate");
+        int closedIndex = result.indexOf("Chiuse");
+        int expiredIndex = result.indexOf("Scadute");
+
+        assertTrue(activatedIndex < closedIndex);
+        assertTrue(closedIndex < expiredIndex);
+    }
+
+    @Test
+    void shouldFormatKnownPaymentType() {
+        // Given
+        String paymentTypeCode = "CREDIT_CARD";
+
+        // When
+        String result = SlackDateRangeReportMessageUtils.formatPaymentTypeCode(paymentTypeCode);
+
+        // Then
+        assertEquals("   :credit_card: *Carta di credito*", result);
+    }
+
+    @Test
+    void shouldFormatUnknownPaymentType() {
+        // Given
+        String paymentTypeCode = "UNKNOWN_TYPE";
+
+        // When
+        String result = SlackDateRangeReportMessageUtils.formatPaymentTypeCode(paymentTypeCode);
+
+        // Then
+        assertEquals("   :moneybag: *UNKNOWN_TYPE*", result);
+    }
+
+    @Test
+    void shouldSortByActivatedCountDescending() {
+        // Given
+        List<AggregatedStatusGroup> groups = new ArrayList<>();
+
+        AggregatedStatusGroup group1 = new AggregatedStatusGroup(
+                "2023-01-01",
+                "client1",
+                "psp1",
+                "CREDIT_CARD",
+                Arrays.asList("ACTIVATED", "NOTIFIED_OK")
+        );
+        group1.incrementStatus("ACTIVATED", 50);
+
+        AggregatedStatusGroup group2 = new AggregatedStatusGroup(
+                "2023-01-01",
+                "client2",
+                "psp2",
+                "PAYPAL",
+                Arrays.asList("ACTIVATED", "NOTIFIED_OK")
+        );
+        group2.incrementStatus("ACTIVATED", 100);
+
+        AggregatedStatusGroup group3 = new AggregatedStatusGroup(
+                "2023-01-01",
+                "client3",
+                "psp3",
+                "DEBIT_CARD",
+                Arrays.asList("ACTIVATED", "NOTIFIED_OK")
+        );
+        group3.incrementStatus("ACTIVATED", 25);
+
+        groups.add(group1);
+        groups.add(group2);
+        groups.add(group3);
+
+        // When
+        List<AggregatedStatusGroup> result = SlackDateRangeReportMessageUtils.sortAggregatedGroups(groups);
+
+        // Then
+        assertEquals("client2", result.get(0).getClientId()); // 100
+        assertEquals("client1", result.get(1).getClientId()); // 50
+        assertEquals("client3", result.get(2).getClientId()); // 25
+    }
+
+    @Test
+    void shouldHandleMissingActivatedStatus() {
+        // Given
+        List<AggregatedStatusGroup> groups = new ArrayList<>();
+
+        AggregatedStatusGroup group1 = new AggregatedStatusGroup(
+                "2023-01-01",
+                "client1",
+                "psp1",
+                "CREDIT_CARD",
+                Arrays.asList("ACTIVATED", "NOTIFIED_OK")
+        );
+        group1.incrementStatus("ACTIVATED", 50);
+
+        AggregatedStatusGroup group2 = new AggregatedStatusGroup(
+                "2023-01-01",
+                "client2",
+                "psp2",
+                "PAYPAL",
+                Arrays.asList("NOTIFIED_OK")
+        );
+        group2.incrementStatus("NOTIFIED_OK", 100);
+
+        groups.add(group1);
+        groups.add(group2);
+
+        // When
+        List<AggregatedStatusGroup> result = SlackDateRangeReportMessageUtils.sortAggregatedGroups(groups);
+
+        // Then
+        assertEquals("client1", result.get(0).getClientId()); // 50
+        assertEquals("client2", result.get(1).getClientId()); // 0 (default)
+    }
+
+    @Test
+    void shouldCreateCorrectHeaderBlock() {
+        // Given
+        String startDate = "1 gennaio 2023";
+        String endDate = "7 gennaio 2023";
+
+        // When
+        Map<String, Object> result = SlackDateRangeReportMessageUtils.createHeaderBlock(startDate, endDate);
+
+        // Then
+        assertEquals("header", result.get("type"));
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> textBlock = (Map<String, Object>) result.get("text");
+
+        assertEquals("plain_text", textBlock.get("type"));
+        assertEquals(
+                ":pagopa: Report Settimanale Transazioni 1 gennaio 2023 - 7 gennaio 2023 :pagopa:",
+                textBlock.get("text")
+        );
+        assertEquals(true, textBlock.get("emoji"));
+    }
+
+    @Test
+    void shouldCreateCorrectImageBlock() {
+        // When
+        Map<String, Object> result = SlackDateRangeReportMessageUtils.createImageBlock();
+
+        // Then
+        assertEquals("image", result.get("type"));
+        assertTrue(result.get("image_url").toString().contains("logo-pagopa-spa.png"));
+        assertEquals("PagoPA Logo", result.get("alt_text"));
+        assertEquals(474, result.get("image_width"));
+        assertEquals(133, result.get("image_height"));
+    }
+
+    @Test
+    void shouldCreateCorrectDividerBlock() {
+        // When
+        Map<String, Object> result = SlackDateRangeReportMessageUtils.createDivider();
+
+        // Then
+        assertEquals("divider", result.get("type"));
+    }
+
+    @Test
+    void shouldCreateCorrectGroupHeaderSection() {
+        // Given
+        AggregatedStatusGroup group = new AggregatedStatusGroup(
+                "2023-01-01",
+                "testClient",
+                "testPsp",
+                "CREDIT_CARD",
+                Collections.emptyList()
+        );
+
+        // When
+        Map<String, Object> result = SlackDateRangeReportMessageUtils.createGroupHeaderSection(group);
+
+        // Then
+        assertEquals("section", result.get("type"));
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> textBlock = (Map<String, Object>) result.get("text");
+
+        assertEquals("mrkdwn", textBlock.get("type"));
+        String text = (String) textBlock.get("text");
+
+        assertTrue(text.contains("Client *testClient*"));
+        assertTrue(text.contains("PSP *testPsp*"));
+        assertTrue(text.contains("Carta di credito"));
+    }
+
+    @Test
+    void shouldCreateCorrectStatusDetailsSection() {
+        // Given
+        AggregatedStatusGroup group = new AggregatedStatusGroup(
+                "2023-01-01",
+                "testClient",
+                "testPsp",
+                "CREDIT_CARD",
+                Arrays.asList("ACTIVATED", "NOTIFIED_OK")
+        );
+        group.incrementStatus("ACTIVATED", 100);
+        group.incrementStatus("NOTIFIED_OK", 80);
+
+        // When
+        Map<String, Object> result = SlackDateRangeReportMessageUtils.createStatusDetailsSection(group);
+
+        // Then
+        assertEquals("section", result.get("type"));
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> textBlock = (Map<String, Object>) result.get("text");
+
+        assertEquals("mrkdwn", textBlock.get("type"));
+        String text = (String) textBlock.get("text");
+
+        assertTrue(text.contains("*Attivate*: 100"));
+        assertTrue(text.contains("*Complete con notifica*: 80"));
+    }
+
+    @Test
+    void shouldCreateCorrectTextBlock() {
+        // Given
+        String blockType = "section";
+        String textType = "mrkdwn";
+        String content = "Test content";
+        boolean emoji = true;
+
+        // When
+        Map<String, Object> result = SlackDateRangeReportMessageUtils
+                .createTextBlock(blockType, textType, content, emoji);
+
+        // Then
+        assertEquals(blockType, result.get("type"));
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> textBlock = (Map<String, Object>) result.get("text");
+
+        assertEquals(textType, textBlock.get("type"));
+        assertEquals(content, textBlock.get("text"));
+        assertEquals(emoji, textBlock.get("emoji"));
+    }
+
+    @Test
+    void shouldCreateCompleteReport() throws Exception {
+        // Given
+        List<AggregatedStatusGroup> groups = new ArrayList<>();
+
+        AggregatedStatusGroup group1 = new AggregatedStatusGroup(
+                "2023-01-01",
+                "client1",
+                "psp1",
+                "CREDIT_CARD",
+                Arrays.asList("ACTIVATED", "NOTIFIED_OK")
+        );
+        group1.incrementStatus("ACTIVATED", 100);
+        group1.incrementStatus("NOTIFIED_OK", 80);
+
+        AggregatedStatusGroup group2 = new AggregatedStatusGroup(
+                "2023-01-01",
+                "client2",
+                "psp2",
+                "PAYPAL",
+                Arrays.asList("ACTIVATED", "EXPIRED")
+        );
+        group2.incrementStatus("ACTIVATED", 50);
+        group2.incrementStatus("EXPIRED", 10);
+
+        groups.add(group1);
+        groups.add(group2);
+
+        LocalDate startDate = LocalDate.of(2023, 1, 1);
+        LocalDate endDate = LocalDate.of(2023, 1, 7);
+
+        // When
+        String result = SlackDateRangeReportMessageUtils
+                .createAggregatedWeeklyReport(groups, startDate, endDate, mockLogger);
+
+        // Then
+        assertNotNull(result);
+
+        // Print the result for debugging
+        System.out.println("Report result: " + result);
+
+        // Check basic structure
+        assertTrue(result.contains("blocks"), "Result should contain 'blocks'");
+
+        // Check date formatting
+        String formattedStartDate = SlackDateRangeReportMessageUtils.formatDate(startDate);
+        String formattedEndDate = SlackDateRangeReportMessageUtils.formatDate(endDate);
+        assertTrue(
+                result.contains(formattedStartDate),
+                "Result should contain formatted start date: " + formattedStartDate
+        );
+        assertTrue(
+                result.contains(formattedEndDate),
+                "Result should contain formatted end date: " + formattedEndDate
+        );
+
+        // Check client and PSP IDs - these might be formatted differently in the actual
+        // output
+        assertTrue(
+                result.contains("client1") || result.contains("*client1*"),
+                "Result should contain client1"
+        );
+        assertTrue(
+                result.contains("client2") || result.contains("*client2*"),
+                "Result should contain client2"
+        );
+        assertTrue(
+                result.contains("psp1") || result.contains("*psp1*"),
+                "Result should contain psp1"
+        );
+        assertTrue(
+                result.contains("psp2") || result.contains("*psp2*"),
+                "Result should contain psp2"
+        );
+
+        // Check payment types - these might be translated in the output
+        assertTrue(
+                result.contains("CREDIT_CARD") || result.contains("Carta di credito"),
+                "Result should contain CREDIT_CARD or its translation"
+        );
+        assertTrue(
+                result.contains("PAYPAL") || result.contains("PayPal"),
+                "Result should contain PAYPAL or its translation"
+        );
+    }
+
+    @Test
+    void shouldHandleEmptyGroups() throws Exception {
+        // Given
+        List<AggregatedStatusGroup> groups = new ArrayList<>();
+        LocalDate startDate = LocalDate.of(2023, 1, 1);
+        LocalDate endDate = LocalDate.of(2023, 1, 7);
+
+        // When
+        String result = SlackDateRangeReportMessageUtils
+                .createAggregatedWeeklyReport(groups, startDate, endDate, mockLogger);
+
+        // Then
+        assertNotNull(result);
+        assertTrue(result.contains("blocks"));
+        assertTrue(result.contains("1 gennaio 2023"));
+        assertTrue(result.contains("7 gennaio 2023"));
+    }
+
+    @Test
+    void shouldIncrementCorrectly() {
+        // Given
+        AggregatedStatusGroup group = new AggregatedStatusGroup(
+                "2023-01-01",
+                "client1",
+                "psp1",
+                "CREDIT_CARD",
+                Arrays.asList("ACTIVATED", "NOTIFIED_OK")
+        );
+
+        // When
+        group.incrementStatus("ACTIVATED", 5);
+        group.incrementStatus("ACTIVATED", 10);
+        group.incrementStatus("NOTIFIED_OK", 7);
+
+        // Then
+        assertEquals(15, group.getStatusCounts().get("ACTIVATED"));
+        assertEquals(7, group.getStatusCounts().get("NOTIFIED_OK"));
+    }
+
+    @Test
+    void shouldHandleNonInitializedStatus() {
+        // Given
+        AggregatedStatusGroup group = new AggregatedStatusGroup(
+                "2023-01-01",
+                "client1",
+                "psp1",
+                "CREDIT_CARD",
+                Arrays.asList("ACTIVATED")
+        );
+
+        // When
+        group.incrementStatus("NOTIFIED_OK", 10); // Not in initial list
+
+        // Then
+        assertEquals(10, group.getStatusCounts().get("NOTIFIED_OK"));
+    }
+
+    @Test
+    void shouldFormatCorrectly() {
+        // Given
+        AggregatedStatusGroup group = new AggregatedStatusGroup(
+                "2023-01-01",
+                "client1",
+                "psp1",
+                "CREDIT_CARD",
+                Arrays.asList("ACTIVATED", "NOTIFIED_OK")
+        );
+        group.incrementStatus("ACTIVATED", 100);
+        group.incrementStatus("NOTIFIED_OK", 80);
+
+        // When
+        String result = group.toString();
+
+        // Then
+        assertTrue(result.contains("Date: 2023-01-01"));
+        assertTrue(result.contains("ClientId: client1"));
+        assertTrue(result.contains("PspId: psp1"));
+        assertTrue(result.contains("PaymentType: CREDIT_CARD"));
+        assertTrue(result.contains("ACTIVATED=100"));
+        assertTrue(result.contains("NOTIFIED_OK=80"));
+    }
+
+    @Test
+    void shouldInitializeStatusCountsWithZeros() {
+        // Given
+        List<String> statusFields = Arrays.asList("ACTIVATED", "NOTIFIED_OK", "EXPIRED");
+
+        // When
+        AggregatedStatusGroup group = new AggregatedStatusGroup(
+                "2023-01-01",
+                "client1",
+                "psp1",
+                "CREDIT_CARD",
+                statusFields
+        );
+
+        // Then
+        assertEquals(0, group.getStatusCounts().get("ACTIVATED"));
+        assertEquals(0, group.getStatusCounts().get("NOTIFIED_OK"));
+        assertEquals(0, group.getStatusCounts().get("EXPIRED"));
+        assertEquals(3, group.getStatusCounts().size());
+    }
+}
