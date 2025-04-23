@@ -17,7 +17,11 @@ public class HttpResponseMessageMock implements HttpResponseMessage {
     private Object body;
     private Map<String, String> headers;
 
-    public HttpResponseMessageMock(HttpStatusType status, Map<String, String> headers, Object body) {
+    public HttpResponseMessageMock(
+            HttpStatusType status,
+            Map<String, String> headers,
+            Object body
+    ) {
         this.httpStatus = status;
         this.httpStatusCode = status.value();
         this.headers = headers;
@@ -64,7 +68,10 @@ public class HttpResponseMessageMock implements HttpResponseMessage {
         }
 
         @Override
-        public Builder header(String key, String value) {
+        public Builder header(
+                              String key,
+                              String value
+        ) {
             this.headers.put(key, value);
             return this;
         }

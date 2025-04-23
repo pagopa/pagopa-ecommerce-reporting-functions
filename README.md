@@ -36,7 +36,7 @@ The project uses Maven for dependency management. Run the following command to d
 ### Install Azure Functions core tools
 ```bash
 brew install azure-functions-core-tools@4
-brew tap azure/functions 
+brew tap azure/functions
 ```
 
 ```bash
@@ -47,12 +47,12 @@ Create the necessary Azure Function configurations (e.g., connection strings, AP
 
 ```json
 {
-  "IsEncrypted": false,
-  "Values": {
-    "FUNCTIONS_WORKER_RUNTIME": "java",
-    "AzureWebJobsStorage": "<your-storage-connection-string>",
-    "YourApiKey": "<your-api-key>"
-  }
+"IsEncrypted": false,
+"Values": {
+	"FUNCTIONS_WORKER_RUNTIME": "java",
+	"AzureWebJobsStorage": "<your-storage-connection-string>",
+	"YourApiKey": "<your-api-key>"
+}
 }
 ```
 

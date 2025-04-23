@@ -1,15 +1,12 @@
 package it.pagopa.ecommerce.reporting.clients;
 
 import java.nio.charset.StandardCharsets;
-import java.time.LocalDate;
-import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import it.pagopa.ecommerce.reporting.utils.WeeklyReportUtils;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
@@ -28,7 +25,8 @@ public class SlackWebhookClient {
      * Posts a raw JSON message to the Slack webhook
      *
      * @param jsonPayload The JSON payload to send
-     * @return Response from Slack as JsonNode, or an empty JsonNode if an error occurred
+     * @return Response from Slack as JsonNode, or an empty JsonNode if an error
+     *         occurred
      */
     public static JsonNode postRawJsonToWebhook(String jsonPayload) {
         logger.info("Posting message to Slack webhook");

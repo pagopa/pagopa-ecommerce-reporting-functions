@@ -7,7 +7,11 @@ public class SlackMessage {
     public SlackMessage() {
 
     }
-    public SlackMessage(String type, String text) {
+
+    public SlackMessage(
+            String type,
+            String text
+    ) {
         this.type = type;
         this.text = text;
     }

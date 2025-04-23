@@ -32,7 +32,7 @@ class TransactionStatusAggregationServiceTest {
     void testAggregateStatusCountByDateRange() {
         // Given
         LocalDate startDate = LocalDate.of(2024, 4, 1);
-        LocalDate endDate = LocalDate.of(2024, 4, 1); 
+        LocalDate endDate = LocalDate.of(2024, 4, 1);
         String partitionKey = "2024-04-01";
 
         TableEntity entityFirst = new TableEntity(partitionKey, "row1");
@@ -51,14 +51,14 @@ class TransactionStatusAggregationServiceTest {
         entitySecond.addProperty("CLOSED", 5);
         entitySecond.addProperty("NOTIFIED_OK", 9);
 
-        Iterable<TableEntity> iterable = List.of(entityFirst,entitySecond);
+        Iterable<TableEntity> iterable = List.of(entityFirst, entitySecond);
 
         // Mocking the PagedIterable with simple iterator
         PagedIterable<TableEntity> pagedEntities = mock(PagedIterable.class);
         when(pagedEntities.iterator()).thenReturn(iterable.iterator());
 
         when(mockTableClient.listEntities(any(ListEntitiesOptions.class), isNull(), isNull()))
-            .thenReturn(pagedEntities);
+                .thenReturn(pagedEntities);
 
         // When
         List<AggregatedStatusGroup> result = service.aggregateStatusCountByDateRange(startDate, endDate, mockLogger);
@@ -76,6 +76,6 @@ class TransactionStatusAggregationServiceTest {
         assertEquals(6, counts.get("ACTIVATED"));
         assertEquals(6, counts.get("CLOSED"));
         assertEquals(11, counts.get("NOTIFIED_OK"));
-        assertEquals(0, counts.get("EXPIRED")); 
+        assertEquals(0, counts.get("EXPIRED"));
     }
 }

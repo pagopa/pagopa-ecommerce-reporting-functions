@@ -13,7 +13,13 @@ public class AggregatedStatusGroup {
     private String paymentTypeCode;
     private Map<String, Integer> statusCounts = new HashMap<>();
 
-    public AggregatedStatusGroup(String date, String clientId, String pspId, String paymentTypeCode, List<String> statusFields) {
+    public AggregatedStatusGroup(
+            String date,
+            String clientId,
+            String pspId,
+            String paymentTypeCode,
+            List<String> statusFields
+    ) {
         this.date = date;
         this.clientId = clientId;
         this.pspId = pspId;
@@ -23,7 +29,10 @@ public class AggregatedStatusGroup {
         }
     }
 
-    public void incrementStatus(String status, int value) {
+    public void incrementStatus(
+                                String status,
+                                int value
+    ) {
         statusCounts.put(status, statusCounts.getOrDefault(status, 0) + value);
     }
 
@@ -31,7 +40,11 @@ public class AggregatedStatusGroup {
     public String toString() {
         return String.format(
                 "Date: %s | ClientId: %s | PspId: %s | PaymentType: %s | Counts: %s",
-                date, clientId, pspId, paymentTypeCode, statusCounts
+                date,
+                clientId,
+                pspId,
+                paymentTypeCode,
+                statusCounts
         );
     }
 }

@@ -47,7 +47,13 @@ public class TransactionMetric {
         return new TransactionMetric(date, clientId, paymentTypeCode, pspId, statusCounts);
     }
 
-    public TransactionMetric(LocalDate date, String clientId, String paymentTypeCode, String pspId, Map<String, Integer> statusCounts) {
+    public TransactionMetric(
+            LocalDate date,
+            String clientId,
+            String paymentTypeCode,
+            String pspId,
+            Map<String, Integer> statusCounts
+    ) {
         this.date = date;
         this.clientId = clientId;
         this.paymentTypeCode = paymentTypeCode;

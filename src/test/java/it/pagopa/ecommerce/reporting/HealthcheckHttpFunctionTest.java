@@ -30,7 +30,7 @@ class HealthcheckHttpFunctionTest {
     @Mock
     HttpRequestMessage<Optional<String>> request;
 
-	@Mock
+    @Mock
     ExecutionContext context;
 
     @Spy
@@ -51,10 +51,11 @@ class HealthcheckHttpFunctionTest {
         doReturn(builder).when(builder).header(anyString(), anyString());
 
         // test execution
-        /*HttpResponseMessage response = infoFunction.run(request, context);
-
-        // test assertion
-        assertEquals(HttpStatus.OK, response.getStatus());*/
+        /*
+         * HttpResponseMessage response = infoFunction.run(request, context);
+         *
+         * // test assertion assertEquals(HttpStatus.OK, response.getStatus());
+         */
     }
 
     @SneakyThrows
