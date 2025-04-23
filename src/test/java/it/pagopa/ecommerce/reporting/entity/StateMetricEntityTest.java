@@ -34,7 +34,10 @@ public class StateMetricEntityTest {
 
         assertTrue(entity.getProperties().containsKey("createdAt"));
         assertTrue(entity.getProperty("createdAt") instanceof String);
-        assertTrue(((String) entity.getProperty("createdAt")).startsWith("2025") || ((String) entity.getProperty("createdAt")).contains("T"));
+        assertTrue(
+                ((String) entity.getProperty("createdAt")).startsWith("2025")
+                        || ((String) entity.getProperty("createdAt")).contains("T")
+        );
 
         assertEquals(10, entity.getProperty("ACTIVATED"));
         assertEquals(5, entity.getProperty("CLOSED"));

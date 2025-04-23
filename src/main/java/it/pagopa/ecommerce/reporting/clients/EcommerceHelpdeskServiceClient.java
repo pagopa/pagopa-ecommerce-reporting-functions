@@ -5,6 +5,9 @@ import java.time.OffsetDateTime;
 import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
@@ -14,23 +17,26 @@ import org.apache.http.util.EntityUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class EcommerceHelpdeskServiceClient {
 
-    private static final String API_HOST = "https://api.platform.pagopa.it";
-    private static final String SUBSCRIPTION_KEY = System.getenv("ECOMMERCE_DL_SUBSCRIPTION_KEY");
+    private static final String API_HOST = System.getenv("HELPDESK_SERVICE_URI");
+    private static final String API_KEY = System.getenv("HELPDESK_SERVICE_API_KEY");
+    private static final String API_ENDPOINT = System.getenv("HELPDESK_SERVICE_API_ENDPOINT");
     private static ObjectMapper objectMapper = new ObjectMapper();
+    private static EcommerceHelpdeskServiceClient instance = null;
 
-    public static JsonNode fetchTransactionMetrics(
-                                                   String clientId,
-                                                   String pspId,
-                                                   String paymentTypeCode,
-                                                   OffsetDateTime startDate,
-                                                   OffsetDateTime endDate,
-                                                   Logger logger
+    public JsonNode fetchTransactionMetrics(
+                                            String clientId,
+                                            String pspId,
+                                            String paymentTypeCode,
+                                            OffsetDateTime startDate,
+                                            OffsetDateTime endDate,
+                                            Logger logger
     ) {
         if (!isValid(clientId, "Client ID", logger) || !isValid(pspId, "PSP ID", logger)
                 || !isValid(paymentTypeCode, "PaymentTypeCode", logger) || !isValid(startDate, "startDate", logger)
-                || !isValid(endDate, "endDate", logger) || !isValid(SUBSCRIPTION_KEY, "Subscription Key", logger)) {
+                || !isValid(endDate, "endDate", logger) || !isValid(API_KEY, "Subscription Key", logger)) {
             return objectMapper.createObjectNode();
         }
         logger.info(
@@ -56,10 +62,10 @@ public class EcommerceHelpdeskServiceClient {
         }
     }
 
-    private static boolean isValid(
-                                   String value,
-                                   String fieldName,
-                                   Logger logger
+    private boolean isValid(
+                            String value,
+                            String fieldName,
+                            Logger logger
     ) {
         if (Optional.ofNullable(value).map(String::isEmpty).orElse(true)) {
             logger.warning(() -> String.format("%s is null or empty", fieldName));
@@ -68,10 +74,10 @@ public class EcommerceHelpdeskServiceClient {
         return true;
     }
 
-    private static boolean isValid(
-                                   OffsetDateTime value,
-                                   String fieldName,
-                                   Logger logger
+    private boolean isValid(
+                            OffsetDateTime value,
+                            String fieldName,
+                            Logger logger
     ) {
         if (value == null) {
             logger.warning(() -> String.format("%s is null or empty", fieldName));
@@ -80,15 +86,15 @@ public class EcommerceHelpdeskServiceClient {
         return true;
     }
 
-    private static HttpPost createHttpPost(
-                                           String clientId,
-                                           String pspId,
-                                           String paymentTypeCode,
-                                           OffsetDateTime startDate,
-                                           OffsetDateTime endDate
+    private HttpPost createHttpPost(
+                                    String clientId,
+                                    String pspId,
+                                    String paymentTypeCode,
+                                    OffsetDateTime startDate,
+                                    OffsetDateTime endDate
     ) {
-        HttpPost httpPost = new HttpPost(API_HOST + "/ecommerce/helpdesk-service/v2/ecommerce/searchMetrics");
-        httpPost.setHeader("ocp-apim-subscription-key", SUBSCRIPTION_KEY);
+        HttpPost httpPost = new HttpPost(API_HOST + API_ENDPOINT);
+        httpPost.setHeader("ocp-apim-subscription-key", API_KEY);
         httpPost.setHeader("Content-Type", "application/json");
         String jsonPayload = String.format(
                 "{\"clientId\":\"%s\",\"pspId\":\"%s\",\"paymentTypeCode\":\"%s\",\"timeRage\":{\"startDate\":\"%s\",\"endDate\":\"%s\",}}",
@@ -100,5 +106,12 @@ public class EcommerceHelpdeskServiceClient {
         );
         httpPost.setEntity(new StringEntity(jsonPayload, StandardCharsets.UTF_8));
         return httpPost;
+    }
+
+    public static EcommerceHelpdeskServiceClient getInstance() {
+        if (instance == null) {
+            instance = new EcommerceHelpdeskServiceClient();
+        }
+        return instance;
     }
 }

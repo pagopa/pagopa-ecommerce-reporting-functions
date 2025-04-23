@@ -22,20 +22,16 @@ public class ReadDataService {
 
     private static ReadDataService instance = null;
     private final Set<String> ecommerceClientList = MapParametersUtils
-            .parseSetString(System.getenv("ECOMMERCE_CLIENTS_LIST"))
-            .fold(exception -> {
+            .parseSetString(System.getenv("ECOMMERCE_CLIENTS_LIST")).fold(exception -> {
                 throw exception;
-            },
-                    Function.identity()
-            );
+            }, Function.identity());
     private final Set<String> paymentTypeCodeList = MapParametersUtils
             .parseSetString(System.getenv("ECOMMERCE_PAYMENT_METHODS_TYPE_CODE_LIST")).fold(exception -> {
                 throw exception;
-            },
-                    Function.identity()
-            );
+            }, Function.identity());
+
     private final Map<String, Set<String>> pspList = MapParametersUtils
-            .parsePspMap(System.getenv("ECOMMERCE_PAYMENT_METHODS_TYPE_CODE_LIST"), paymentTypeCodeList)
+            .parsePspMap(System.getenv("ECOMMERCE_PAYMENT_METHODS_PSP_LIST"), paymentTypeCodeList)
             .fold(exception -> {
                 throw exception;
             },
@@ -55,28 +51,29 @@ public class ReadDataService {
                 now.getYear(),
                 now.getMonthValue(),
                 now.getDayOfMonth(),
-                now.getHour() - 2,
+                now.getHour(),
                 0,
                 0,
                 0,
                 now.getOffset()
-        );
+        ).minusHours(2);
         OffsetDateTime endDateTime = OffsetDateTime.of(
                 now.getYear(),
                 now.getMonthValue(),
                 now.getDayOfMonth(),
-                now.getHour() - 1,
+                now.getHour(),
                 0,
                 0,
                 0,
                 now.getOffset()
-        ).minusNanos(1);
+        ).minusHours(1).minusNanos(1);
+        EcommerceHelpdeskServiceClient ecommerceHelpdeskServiceClient = getEcommerceHelpdeskServiceClient();
         List<JsonNode> transactionMetricsResponseDtoList = new ArrayList<>();
         ecommerceClientList.forEach(
                 client -> paymentTypeCodeList.forEach(
                         paymentMethodTypeCode -> pspList.get(paymentMethodTypeCode).forEach(pspId -> {
                             transactionMetricsResponseDtoList.add(
-                                    EcommerceHelpdeskServiceClient.fetchTransactionMetrics(
+                                    ecommerceHelpdeskServiceClient.fetchTransactionMetrics(
                                             client,
                                             pspId,
                                             paymentMethodTypeCode,
@@ -91,6 +88,10 @@ public class ReadDataService {
                 )
         );
         return transactionMetricsResponseDtoList;
+    }
+
+    protected EcommerceHelpdeskServiceClient getEcommerceHelpdeskServiceClient() {
+        return EcommerceHelpdeskServiceClient.getInstance();
     }
 
 }

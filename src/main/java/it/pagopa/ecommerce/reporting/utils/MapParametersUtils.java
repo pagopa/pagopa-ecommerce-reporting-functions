@@ -1,15 +1,12 @@
 package it.pagopa.ecommerce.reporting.utils;
 
-import com.fasterxml.jackson.core.JacksonException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vavr.control.Either;
 import it.pagopa.ecommerce.reporting.exceptions.JobConfigurationException;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.io.IOException;
+import java.util.*;
 
 public class MapParametersUtils {
 
@@ -19,7 +16,7 @@ public class MapParametersUtils {
         try {
             return Either.right(objectMapper.readValue(inputParam, new TypeReference<Set<String>>() {
             }));
-        } catch (JacksonException ignored) {
+        } catch (IOException ignored) {
             return Either.left(new JobConfigurationException("Invalid json configuration map"));
         }
     }
@@ -43,7 +40,7 @@ public class MapParametersUtils {
                 );
             }
             return Either.right(paymentMethodPspMap);
-        } catch (JacksonException ignored) {
+        } catch (IOException ignored) {
             // exception here is ignored on purpose in order to avoid secret configuration
             // logging in case of wrong configured json string object
             return Either.left(new JobConfigurationException("Invalid json configuration map"));
