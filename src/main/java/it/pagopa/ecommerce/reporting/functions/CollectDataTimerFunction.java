@@ -34,7 +34,7 @@ public class CollectDataTimerFunction {
         WriteDataService writeDataService = this.getWriteDataServiceInstance();
 
         List<JsonNode> transactionMetricsResponseDtoList = readDataService.readData(logger);
-        writeDataService.writeData(transactionMetricsResponseDtoList);
+        writeDataService.writeStateMetricsInTableStorage(transactionMetricsResponseDtoList.get(0), logger);
     }
 
     protected ReadDataService getReadDataServiceInstance() {

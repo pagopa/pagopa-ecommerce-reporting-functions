@@ -1,21 +1,16 @@
 package it.pagopa.ecommerce.reporting.services;
 
-import com.azure.data.tables.TableAsyncClient;
 import com.azure.data.tables.TableClient;
 import com.azure.data.tables.TableClientBuilder;
-import com.azure.data.tables.models.TableTransactionAction;
-import com.azure.data.tables.models.TableTransactionActionType;
+import com.azure.data.tables.models.TableEntity;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import it.pagopa.ecommerce.reporting.entity.StateMetricEntity;
-import lombok.*;
-import lombok.extern.slf4j.Slf4j;
+import it.pagopa.ecommerce.reporting.utils.StatusStorageFields;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
 
 public class WriteDataService {
 
@@ -31,6 +26,10 @@ public class WriteDataService {
                 .buildClient();
     }
 
+    public WriteDataService(TableClient tableClient) {
+        this.tableClient = tableClient;
+    }
+
     public static WriteDataService getInstance() {
         if (instance == null) {
             instance = new WriteDataService();
@@ -38,38 +37,40 @@ public class WriteDataService {
         return instance;
     }
 
-    public void writeData(List<JsonNode> metricsResponseDtos) {
-        // try {
-        // get the table
+    public void writeStateMetricsInTableStorage(
+                                                JsonNode jsonNode,
+                                                Logger log
+    ) {
+        try {
+            String clientId = jsonNode.get("clientId").asText();
+            String paymentTypeCode = jsonNode.get("paymentTypeCode").asText();
+            String pspId = jsonNode.get("pspId").asText();
 
-        List<TableTransactionAction> transactionActions = new ArrayList<>();
+            Map<String, Integer> statusCounts = new HashMap<>();
+            for (String status : StatusStorageFields.values) {
+                JsonNode valueNode = jsonNode.get(status);
+                if (valueNode != null && valueNode.isInt()) {
+                    statusCounts.put(status, valueNode.asInt());
+                }
+            }
 
-        metricsResponseDtos.forEach(jsonNode -> {
-            Map<String, Integer> value = new HashMap<>();
-            value.put("ACTIVATED", 1);
-            value.put("NOTIFIED_OK", 2);
-            transactionActions.add(
-                    new TableTransactionAction(
-                            TableTransactionActionType.CREATE,
-                            StateMetricEntity.createEntity(
-                                    LocalDate.now(),
-                                    "clientId",
-                                    "paymentTypeCode",
-                                    "pspId",
-                                    value
-                            )
-                    )
+            TableEntity entity = StateMetricEntity.createEntity(
+                    LocalDate.now(),
+                    clientId,
+                    paymentTypeCode,
+                    pspId,
+                    statusCounts
             );
-        });
 
-        tableClient.submitTransaction(transactionActions).getTransactionActionResponses().forEach(
-                tableTransactionActionResponse -> System.out
-                        .printf("%n%d", tableTransactionActionResponse.getStatusCode())
-        );
+            tableClient.createEntity(entity);
+            log.info("Successfully inserted state metrics for clientId: " + clientId + ", pspId: " + pspId);
 
-        /*
-         * } catch (URISyntaxException | InvalidKeyException |) { //exception }
-         */
-
+        } catch (Exception e) {
+            log.warning(
+                    "Failed to write state metrics to Azure Table Storage. Error: " + e.getMessage() +
+                            " | JSON content: " + jsonNode.toString()
+            );
+        }
     }
+
 }

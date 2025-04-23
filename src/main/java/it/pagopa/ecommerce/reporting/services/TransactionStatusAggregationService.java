@@ -7,11 +7,11 @@ import com.azure.data.tables.models.ListEntitiesOptions;
 import com.azure.data.tables.models.TableEntity;
 
 import it.pagopa.ecommerce.reporting.utils.AggregatedStatusGroup;
+import it.pagopa.ecommerce.reporting.utils.StatusStorageFields;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,25 +37,6 @@ public class TransactionStatusAggregationService {
 
     private final String CONNECTION_STRING = System.getenv("ECOMMERCE_REPORTING_CONNECTION_STRING");
     private final String TRANSACTIONS_STATUS_TABLE = "StateReporting";
-
-    private final List<String> STATUS_FIELDS = Arrays.asList(
-            "ACTIVATED",
-            "CLOSED",
-            "NOTIFIED_OK",
-            "EXPIRED",
-            "REFUNDED",
-            "CANCELED",
-            "EXPIRED_NOT_AUTHORIZED",
-            "UNAUTHORIZED",
-            "REFUND_ERROR",
-            "REFUND_REQUESTED",
-            "CANCELLATION_REQUESTED",
-            "CANCELLATION_EXPIRED",
-            "AUTHORIZATION_REQUESTED",
-            "AUTHORIZATION_COMPLETED",
-            "CLOSURE_REQUESTED",
-            "CLOSURE_ERROR"
-    );
 
     private final TableClient tableClient;
 
@@ -115,11 +96,17 @@ public class TransactionStatusAggregationService {
                 AggregatedStatusGroup group = aggregatedMap.get(key);
 
                 if (group == null) {
-                    group = new AggregatedStatusGroup(partitionKey, clientId, pspId, paymentType, STATUS_FIELDS);
+                    group = new AggregatedStatusGroup(
+                            partitionKey,
+                            clientId,
+                            pspId,
+                            paymentType,
+                            StatusStorageFields.values
+                    );
                     aggregatedMap.put(key, group);
                 }
 
-                for (String status : STATUS_FIELDS) {
+                for (String status : StatusStorageFields.values) {
                     Object raw = entity.getProperty(status);
                     int count = raw != null ? Integer.parseInt(raw.toString()) : 0;
                     group.incrementStatus(status, count);
