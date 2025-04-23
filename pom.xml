@@ -190,35 +190,6 @@
 					</execution>
 				</executions>
 			</plugin>
-            <!-- <plugin>
-                <groupId>org.openapitools</groupId>
-                <artifactId>openapi-generator-maven-plugin</artifactId>
-                <version>7.1.0</version>
-                <executions>
-                    <execution>
-                        <id>helpdesk-service-api-v2</id>
-                        <goals>
-                            <goal>generate</goal>
-                        </goals>
-                        <configuration>
-                            <inputSpec>https://raw.githubusercontent.com/pagopa/pagopa-infra/b141d34f0bcfe175a7ffb290807f5bf8cd6c1d54/src/domains/ecommerce-app/api/ecommerce-helpdesk-api/v2/_openapi.json.tpl</inputSpec>
-                            <generatorName>java</generatorName>
-                            <library>webclient</library>
-                            <generateApiDocumentation>false</generateApiDocumentation>
-                            <generateApiTests>false</generateApiTests>
-                            <generateModelTests>false</generateModelTests>
-                            <generateSupportingFiles>true</generateSupportingFiles>
-                            <configOptions>
-                                <swaggerAnnotations>false</swaggerAnnotations>
-                                <openApiNullable>false</openApiNullable>
-                            </configOptions>
-                            <modelPackage>it.pagopa.generated.ecommerce.helpdesk.v2.dto</modelPackage>
-                            <apiPackage>it.pagopa.generated.ecommerce.helpdesk.v2.api</apiPackage>
-                            <modelNameSuffix>dto</modelNameSuffix>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin> -->
             <plugin>
                 <groupId>com.diffplug.spotless</groupId>
                 <artifactId>spotless-maven-plugin</artifactId>
