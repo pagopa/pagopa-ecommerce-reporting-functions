@@ -1,14 +1,7 @@
 package it.pagopa.ecommerce.reporting.services;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.core.JacksonException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.vavr.control.Either;
 import it.pagopa.ecommerce.reporting.clients.EcommerceHelpdeskServiceClient;
-import it.pagopa.ecommerce.reporting.exceptions.JobConfigurationException;
 import it.pagopa.ecommerce.reporting.utils.MapParametersUtils;
 import lombok.*;
 
@@ -45,7 +38,7 @@ public class ReadDataService {
         return instance;
     }
 
-    public List<JsonNode> readData() {
+    public List<JsonNode> readData(Logger logger) {
         OffsetDateTime now = OffsetDateTime.now();
         OffsetDateTime startDateTime = OffsetDateTime.of(
                 now.getYear(),
@@ -79,7 +72,7 @@ public class ReadDataService {
                                             paymentMethodTypeCode,
                                             startDateTime,
                                             endDateTime,
-                                            Logger.getLogger(ReadDataService.class.getName())
+                                            logger
                                     )
                             );
                         }

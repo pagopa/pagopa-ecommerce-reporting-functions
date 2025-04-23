@@ -41,13 +41,13 @@ public class CollectDataTimerFunctionTest {
         // precondition
         doReturn(readDataService).when(collectDataTimerFunction).getReadDataServiceInstance();
         doReturn(writeDataService).when(collectDataTimerFunction).getWriteDataServiceInstance();
-        doReturn(resList).when(readDataService).readData();
+        doReturn(resList).when(readDataService).readData(any());
         when(context.getLogger()).thenReturn(logger);
-        when(readDataService.readData()).thenReturn(new ArrayList<>());
+        when(readDataService.readData(any())).thenReturn(new ArrayList<>());
         // test execution
         collectDataTimerFunction.readAndWriteData("timerInfo", context);
 
-        verify(readDataService, times(1)).readData();
+        verify(readDataService, times(1)).readData(any());
         verify(writeDataService, times(1)).writeData(new ArrayList<>());
     }
 

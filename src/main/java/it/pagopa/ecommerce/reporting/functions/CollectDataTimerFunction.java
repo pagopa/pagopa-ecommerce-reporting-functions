@@ -21,7 +21,7 @@ public class CollectDataTimerFunction {
     @FunctionName("readAndWriteData")
     public void readAndWriteData(
                                  @TimerTrigger(
-                                         name = "readAndWriteDataTrigger", schedule = "0 */5 * * * *"
+                                         name = "readAndWriteDataTrigger", schedule = "* * * * * *"
                                  ) String timerInfo,
                                  ExecutionContext context
     ) {
@@ -33,7 +33,7 @@ public class CollectDataTimerFunction {
         ReadDataService readDataService = this.getReadDataServiceInstance();
         WriteDataService writeDataService = this.getWriteDataServiceInstance();
 
-        List<JsonNode> transactionMetricsResponseDtoList = readDataService.readData();
+        List<JsonNode> transactionMetricsResponseDtoList = readDataService.readData(logger);
         writeDataService.writeData(transactionMetricsResponseDtoList);
     }
 

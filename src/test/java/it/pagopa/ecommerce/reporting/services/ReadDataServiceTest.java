@@ -56,7 +56,7 @@ public class ReadDataServiceTest {
                 ecommerceHelpdeskServiceClient
                         .fetchTransactionMetrics(any(), any(), any(), any(), any(), any())
         ).thenReturn(result);
-        List<JsonNode> resultList = readDataService.readData();
+        List<JsonNode> resultList = readDataService.readData(any());
         verify(ecommerceHelpdeskServiceClient, times(8))
                 .fetchTransactionMetrics(any(), any(), any(), any(), any(), any());
         assertEquals(8, resultList.size());
