@@ -21,12 +21,6 @@ import java.util.logging.Logger;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.*;
 
-@RunWith(PowerMockRunner.class)
-@PrepareForTest(
-    {
-            LoggerFactory.class
-    }
-)
 @ExtendWith(SystemStubsExtension.class)
 @ExtendWith(MockitoExtension.class)
 public class EcommerceHelpdeskServiceClientTest {
@@ -40,18 +34,6 @@ public class EcommerceHelpdeskServiceClientTest {
             "HELPDESK_SERVICE_API_ENDPOINT",
             "/apiEndpoint"
     );
-
-    private static Logger mockLOG;
-
-    @BeforeClass
-    public static void setup() {
-        mockStatic(LoggerFactory.class);
-        mockLOG = mock(Logger.class);
-        when(Logger.getLogger(any())).thenReturn(mockLOG);
-    }
-
-    @Spy
-    EcommerceHelpdeskServiceClient ecommerceHelpdeskServiceClient;
 
     @Test
     public void instanceTest() {

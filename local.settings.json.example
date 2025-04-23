@@ -8,7 +8,9 @@
     "ECOMMERCE_PAYMENT_METHODS_PSP_LIST":"{\"CP\":[\"BCITIMM\",\"PAYPTRIXX\"],\"PPAL\":[\"BCITIMM\",\"SATY\"]}",
     "HELPDESK_SERVICE_URI":"apiHost",
     "HELPDESK_SERVICE_API_KEY":"helpdeskApiKey",
-    "HELPDESK_SERVICE_API_ENDPOINT":"apiEndpoint"
+    "HELPDESK_SERVICE_API_ENDPOINT":"apiEndpoint",
+    "ECOMMERCE_REPORTING_SA_CONNECTION_STRING":"reportingSAConnectionString",
+    "ECOMMERCE_REPORTING_TABLE":"tableName"
   },
   "Host": {
     "LocalHttpPort": 8080
