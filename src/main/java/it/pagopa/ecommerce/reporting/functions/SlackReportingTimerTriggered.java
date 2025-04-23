@@ -27,7 +27,9 @@ public class SlackReportingTimerTriggered {
     @FunctionName("SlackReportingTimerTriggered")
     public void run(
                     // 3AM (minute 0) every day of the month, every month, on monday
-                    @TimerTrigger(name = "slackMessageTimerInfo", schedule = "0 3 * * 1") String timerInfo,
+                    @TimerTrigger(
+                            name = "slackMessageTimerInfo", schedule = "%NCRON_SCHEDULE_SLACK_REPORTING%"
+                    ) String timerInfo,
                     final ExecutionContext context
     ) throws JsonProcessingException {
         Logger logger = context.getLogger();
