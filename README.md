@@ -66,6 +66,10 @@ This will start the Azure Function locally, and you can test it with HTTP reques
 
 ## Run Azurite
 Ref.: https://learn.microsoft.com/en-us/azure/storage/common/storage-use-azurite?tabs=docker-hub%2Cblob-storage
+Ex.:
+```bash
+docker run -p 10000:10000 -p 10001:10001 -p 10002:10002 mcr.microsoft.com/azure-storage/azurite
+```
 
 ## Run the application with `Docker`
 

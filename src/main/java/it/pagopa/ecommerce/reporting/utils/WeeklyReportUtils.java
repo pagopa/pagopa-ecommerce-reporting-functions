@@ -86,112 +86,149 @@ public class WeeklyReportUtils {
         String formattedEndDate = endDate.format(dateFormatter);
         String formattedStartDate = startDate.format(dateFormatter);
 
-        // Group metrics by clientId, paymentTypeCode, and pspId
-        Map<String, List<TransactionMetric>> groupedMetrics = metrics.stream()
-                .collect(Collectors.groupingBy(metric ->
-                        metric.getClientId() + "|" + metric.getPaymentTypeCode() + "|" + metric.getPspId()));
+        // Mock data, TODO: use Simo service
+        List<AggregatedStatusGroup> aggregatedGroups = createMockData();
 
-        // Process each group
-        /*for (Map.Entry<String, List<TransactionMetric>> entry : groupedMetrics.entrySet()) {
-            String[] keys = entry.getKey().split("\\|");
-            String clientId = keys[0];
-            String paymentTypeCode = keys[1];
-            String pspId = keys[2];
-            Map<String, Integer> aggregatedStatusCounts = aggregateStatusCounts(entry);
+        // Sort by ACTIVATED in descending order
+        aggregatedGroups.sort((a, b) -> {
+            Integer aNotifiedOk = a.getStatusCounts().getOrDefault("ACTIVATED", 0);
+            Integer bNotifiedOk = b.getStatusCounts().getOrDefault("ACTIVATED", 0);
+            return bNotifiedOk.compareTo(aNotifiedOk);
+        });
 
-            // Calculate total transactions for this group
-            int totalTransactions = aggregatedStatusCounts.values().stream()
-                    .mapToInt(Integer::intValue).sum();
+        // Build the blocks for the Slack message
+        StringBuilder blocksJson = new StringBuilder();
+        blocksJson.append("{\n");
+        blocksJson.append("  \"blocks\": [\n");
 
-            // Format status details
-            String statusDetails = formatStatusDetails(aggregatedStatusCounts);
+        // Header block
+        blocksJson.append("    {\n");
+        blocksJson.append("      \"type\": \"header\",\n");
+        blocksJson.append("      \"text\": {\n");
+        blocksJson.append("        \"type\": \"plain_text\",\n");
+        blocksJson.append("        \"text\": \":tada: Report Settimanale Transazioni\",\n");
+        blocksJson.append("        \"emoji\": true\n");
+        blocksJson.append("      }\n");
+        blocksJson.append("    },\n");
 
-            // Add this group's block to the report
-            reportBlocks.add(String.format("""
-                    {
-                        "type": "divider"
-                    },
-                    {
-                        "type": "section",
-                        "fields": [
-                            {
-                                "type": "mrkdwn",
-                                "text": "*ID Cliente:*\n%s"
-                            },
-                            {
-                                "type": "mrkdwn",
-                                "text": "*Tipo Pagamento:*\n%s"
-                            }
-                        ]
-                    },
-                    {
-                        "type": "section",
-                        "fields": [
-                            {
-                                "type": "mrkdwn",
-                                "text": "*ID PSP:*\n%s"
-                            },
-                            {
-                                "type": "mrkdwn",
-                                "text": "*Totale Transazioni:*\n%d"
-                            }
-                        ]
-                    },
-                    {
-                        "type": "section",
-                        "text": {
-                            "type": "mrkdwn",
-                            "text": "*Dettaglio Stato Transazioni:*\n%s"
-                        }
-                    }
-                    """,
-                    clientId,
-                    paymentTypeCode,
-                    pspId,
-                    totalTransactions,
-                    statusDetails));
-        }*/
+        // Image PagoPA
+        blocksJson.append("    {\n");
+        blocksJson.append("      \"type\": \"image\",\n");
+        blocksJson.append("      \"image_url\": \"https://developer.pagopa.it/gitbook/docs/8phwN5u2QXllSKsqBjQU/.gitbook/assets/logo_asset.png\",\n");
+        blocksJson.append("      \"alt_text\": \"PagoPA Logo\",\n");
+        blocksJson.append("      \"image_width\": 250,\n");
+        blocksJson.append("      \"image_height\": 100\n");
+        blocksJson.append("    },\n");
 
+        // Date range section
+        blocksJson.append("    {\n");
+        blocksJson.append("      \"type\": \"section\",\n");
+        blocksJson.append("      \"text\": {\n");
+        blocksJson.append("        \"type\": \"mrkdwn\",\n");
+        blocksJson.append("        \"text\": \"*Periodo:* " + formattedStartDate + " - " + formattedEndDate + "\"\n");
+        blocksJson.append("      }\n");
+        blocksJson.append("    },\n");
 
-        // Then use a JSON library to convert to string
-        String jsonPayload = """
-                	{
-                	"blocks": [
-                		{
-                			"type": "section",
-                			"text": {
-                				"type": "mrkdwn",
-                				"text": "Hello, Assistant to the Regional Manager Dwight! *Michael Scott* wants to know where you'd like to take the Paper Company investors to dinner tonight.\\n\\n *Please select a restaurant:*"
-                			}
-                		},
-                		{
-                             "type": "header",
-                             "text": {
-                                 "type": "plain_text",
-                                 "text": ":tada: Report Settimanale Transazioni",
-                                 "emoji": true
-                             }
-                         }
-                	]
-                }""";
-        // Combine all blocks into the final message
-        return jsonPayload;
-    }
+        // Divider
+        blocksJson.append("    {\n");
+        blocksJson.append("      \"type\": \"divider\"\n");
+        blocksJson.append("    },\n");
 
-    private static Map<String, Integer> aggregateStatusCounts(Map.Entry<String, List<TransactionMetric>> entry) {
-        List<TransactionMetric> groupMetrics = entry.getValue();
+        // Add sections for each aggregated group
+        for (int i = 0; i < aggregatedGroups.size(); i++) {
+            AggregatedStatusGroup group = aggregatedGroups.get(i);
 
-        // Aggregate status counts across all metrics in this group
-        Map<String, Integer> aggregatedStatusCounts = new HashMap<>();
+            // Group header
+            blocksJson.append("    {\n");
+            blocksJson.append("      \"type\": \"section\",\n");
+            blocksJson.append("      \"text\": {\n");
+            blocksJson.append("        \"type\": \"mrkdwn\",\n");
+            blocksJson.append("        \"text\": \"*Client:* " + group.getClientId() + " | *PSP:* " + group.getPspId() + " | *Payment Type:* " + group.getPaymentTypeCode() + "\"\n");
+            blocksJson.append("      }\n");
+            blocksJson.append("    },\n");
 
-        for (TransactionMetric metric : groupMetrics) {
-            for (Map.Entry<String, Integer> statusEntry : metric.getStatusCounts().entrySet()) {
-                String status = statusEntry.getKey();
-                Integer count = statusEntry.getValue();
-                aggregatedStatusCounts.put(status,
-                        aggregatedStatusCounts.getOrDefault(status, 0) + count);
+            // Status details
+            blocksJson.append("    {\n");
+            blocksJson.append("      \"type\": \"section\",\n");
+            blocksJson.append("      \"text\": {\n");
+            blocksJson.append("        \"type\": \"mrkdwn\",\n");
+            blocksJson.append("        \"text\": \"" + formatStatusDetails(group.getStatusCounts()).replace("\n", "\\n") + "\"\n");
+            blocksJson.append("      }\n");
+            blocksJson.append("    }");
+
+            // Add comma if not the last item
+            if (i < aggregatedGroups.size() - 1) {
+                blocksJson.append(",\n");
+            } else {
+                blocksJson.append("\n");
             }
         }
-        return aggregatedStatusCounts;
+
+        blocksJson.append("  ]\n");
+        blocksJson.append("}");
+
+        return blocksJson.toString();
+    }
+
+    /**
+     * Creates mock data for testing the report
+     *
+     * @return List of mock AggregatedStatusGroup objects
+     */
+    private static List<AggregatedStatusGroup> createMockData() {
+        List<AggregatedStatusGroup> mockData = new ArrayList<>();
+
+        // Define some status fields
+        List<String> statusFields = Arrays.asList(
+                "ACTIVATED", "CLOSED", "NOTIFIED_OK", "EXPIRED", "UNAUTHORIZED",
+                "REFUNDED", "CANCELED"
+        );
+
+        // Create mock data with different NOTIFIED_OK counts
+        String today = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+
+        // Group 1
+        AggregatedStatusGroup group1 = new AggregatedStatusGroup(today, "Client1", "PSP001", "CREDIT_CARD", statusFields);
+        group1.incrementStatus("ACTIVATED", 1000);
+        group1.incrementStatus("CLOSED", 950);
+        group1.incrementStatus("NOTIFIED_OK", 900);
+        group1.incrementStatus("EXPIRED", 50);
+        group1.incrementStatus("UNAUTHORIZED", 30);
+        group1.incrementStatus("REFUNDED", 20);
+        mockData.add(group1);
+
+        // Group 2
+        AggregatedStatusGroup group2 = new AggregatedStatusGroup(today, "Client2", "PSP002", "BANK_TRANSFER", statusFields);
+        group2.incrementStatus("ACTIVATED", 800);
+        group2.incrementStatus("CLOSED", 780);
+        group2.incrementStatus("NOTIFIED_OK", 750);
+        group2.incrementStatus("EXPIRED", 20);
+        group2.incrementStatus("UNAUTHORIZED", 15);
+        group2.incrementStatus("REFUNDED", 10);
+        group2.incrementStatus("CANCELED", 5);
+        mockData.add(group2);
+
+        // Group 3
+        AggregatedStatusGroup group3 = new AggregatedStatusGroup(today, "Client3", "PSP003", "PAYPAL", statusFields);
+        group3.incrementStatus("ACTIVATED", 1200);
+        group3.incrementStatus("CLOSED", 1150);
+        group3.incrementStatus("NOTIFIED_OK", 1100);
+        group3.incrementStatus("EXPIRED", 50);
+        group3.incrementStatus("UNAUTHORIZED", 25);
+        group3.incrementStatus("REFUNDED", 15);
+        group3.incrementStatus("CANCELED", 10);
+        mockData.add(group3);
+
+        // Group 4
+        AggregatedStatusGroup group4 = new AggregatedStatusGroup(today, "Client1", "PSP004", "DEBIT_CARD", statusFields);
+        group4.incrementStatus("ACTIVATED", 500);
+        group4.incrementStatus("CLOSED", 480);
+        group4.incrementStatus("NOTIFIED_OK", 450);
+        group4.incrementStatus("EXPIRED", 20);
+        group4.incrementStatus("UNAUTHORIZED", 10);
+        group4.incrementStatus("REFUNDED", 5);
+        mockData.add(group4);
+
+        return mockData;
     }
 }
