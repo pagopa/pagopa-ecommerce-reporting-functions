@@ -4,7 +4,7 @@ microservice-chart:
   fullnameOverride: "pagopa-ecommerce-reporting-functions"
   image:
     repository: pagopadcommonacr.azurecr.io/pagopaecommercereportingfunctions
-    tag: "0.14.2"
+    tag: "0.1.0-1"
     pullPolicy: Always
   livenessProbe:
     httpGet:
@@ -35,9 +35,9 @@ microservice-chart:
     servicePort: 8080
   serviceAccount:
     create: false
-    annotations: { }
+    annotations: {}
     name: "ecommerce-workload-identity"
-  podAnnotations: { }
+  podAnnotations: {}
   podSecurityContext:
     seccompProfile:
       type: RuntimeDefault
@@ -70,7 +70,7 @@ microservice-chart:
   envConfig:
     ASPNETCORE_URLS: "http://*:8080"
     FUNCTIONS_SECRETS_PATH: "/tmp/secrets"
-    WEBSITE_SITE_NAME: "pagopaecommercereportingfunctions" 
+    WEBSITE_SITE_NAME: "pagopaecommercereportingfunctions"
     FUNCTIONS_WORKER_RUNTIME: "java"
     ECOMMERCE_CLIENTS_LIST: "[\"IO\",\"CHECKOUT\",\"CHECKOUT_CART\",\"WISP_REDIRECT\"]"
     ECOMMERCE_PAYMENT_METHODS_TYPE_CODE_LIST: "[\"CP\",\"PPAL\",\"BPAY\",\"RPIC\",\"RBPS\",\"RBPP\",\"RBPR\",\"MYBK\",\"SATY\",\"APPL\",\"RICO\",\"GOOG\"]"
