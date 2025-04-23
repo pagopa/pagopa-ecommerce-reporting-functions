@@ -2,9 +2,8 @@ package it.pagopa.ecommerce.reporting.functions;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.microsoft.azure.functions.*;
-import com.microsoft.azure.functions.annotation.AuthorizationLevel;
 import com.microsoft.azure.functions.annotation.FunctionName;
-import com.microsoft.azure.functions.annotation.HttpTrigger;
+import com.microsoft.azure.functions.annotation.TimerTrigger;
 import it.pagopa.ecommerce.reporting.clients.SlackWebhookClient;
 import it.pagopa.ecommerce.reporting.services.TransactionStatusAggregationService;
 import it.pagopa.ecommerce.reporting.utils.AggregatedStatusGroup;
@@ -14,7 +13,6 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 import java.util.logging.Logger;
 
 /**
@@ -28,22 +26,16 @@ public class SlackReportingTimerTriggered {
      */
     @FunctionName("SlackReportingTimerTriggered")
     public void run(
-                    // TEST ONLY
-                    @HttpTrigger(
-                            name = "SlackTrigger", route = "slack", methods = {
-                                    HttpMethod.GET
-                            }, authLevel = AuthorizationLevel.ANONYMOUS
-                    ) HttpRequestMessage<Optional<String>> request,
-                    // @TimerTrigger(name = "timerInfo", schedule = "0 * * * * *") String timerInfo,
+                    // 3AM (minute 0) every day of the month, every month, on monday
+                    @TimerTrigger(name = "slackMessageTimerInfo", schedule = "0 3 * * 1") String timerInfo,
                     final ExecutionContext context
     ) throws JsonProcessingException {
         Logger logger = context.getLogger();
-        logger.info("Java Timer trigger function executed at: " + LocalDateTime.now());
-        // Post the weekly report to Slack
-        // Mock data, TODO: use Simo service
-        // List<AggregatedStatusGroup> aggregatedStatuses =
-        // SlackDateRangeReportMessageUtils.createMockData();
+        logger.info("Java Timer trigger SlackReportingTimerTriggered executed at: " + LocalDateTime.now());
 
+        String endpoint = System.getenv("ECOMMERCE_SLACK_REPORTING_WEBHOOK_ENDPOINT");
+
+        SlackWebhookClient slackWebhookClient = new SlackWebhookClient(endpoint);
         LocalDate today = LocalDate.now();
         LocalDate lastMonday = today.minusWeeks(1).with(DayOfWeek.MONDAY);
         LocalDate lastSunday = lastMonday.with(DayOfWeek.SUNDAY);
@@ -56,8 +48,10 @@ public class SlackReportingTimerTriggered {
                 "Start date: " + lastMonday + " to date: " + lastSunday + ", results: " + aggregatedStatuses.size()
         );
 
+        // Create the report message
         String report = SlackDateRangeReportMessageUtils
                 .createAggregatedWeeklyReport(aggregatedStatuses, lastMonday, lastSunday, logger);
-        SlackWebhookClient.postMessageToWebhook(report);
+        // Send it to Slack
+        slackWebhookClient.postMessageToWebhook(report);
     }
 }

@@ -91,7 +91,7 @@ public class SlackDateRangeReportMessageUtils {
         }
 
         message.put("blocks", blocks);
-        logger.info("slack message blocks created successfully");
+        logger.info("slack message " + blocks.size() + " blocks created successfully");
         return OBJECT_MAPPER.writeValueAsString(message);
     }
 

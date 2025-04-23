@@ -20,18 +20,16 @@ import java.util.logging.Logger;
 /**
  * Service class to aggregate status counts for transactions within a given date
  * range. The aggregation is performed on the data stored in an eCommerce
- * reporting Azure Table Storage.
- *
- * To use: private static final String CONNECTION_STRING =
- * System.getenv("ECOMMERCE_REPORTING_CONNECTION_STRING"); private static final
- * String TRANSACTIONS_STATUS_TABLE = "StateReporting"; TableClient tableClient
- * = new TableClientBuilder() .connectionString(CONNECTION_STRING)
- * .tableName(TRANSACTIONS_STATUS_TABLE) .buildClient(); LocalDate today =
- * LocalDate.now(); LocalDate lastMonday =
- * today.minusWeeks(1).with(DayOfWeek.MONDAY); LocalDate lastSunday =
- * lastMonday.with(DayOfWeek.SUNDAY); List<AggregatedStatusGroup> aggregated =
- * TransactionStatusAggregationService.aggregateStatusCountByDateRange(lastMonday,
- * lastSunday, logger);
+ * reporting Azure Table Storage. To use: <code>
+ *     private static final StringCONNECTION_STRING =
+ *     System.getenv("ECOMMERCE_REPORTING_CONNECTION_STRING");
+ *     private static final String TRANSACTIONS_STATUS_TABLE = "StateReporting";
+ *     TableClient tableClient = new TableClientBuilder() .connectionString(CONNECTION_STRING).tableName(TRANSACTIONS_STATUS_TABLE) .buildClient();
+ *     LocalDate today = LocalDate.now();
+ *     LocalDate lastMonday = today.minusWeeks(1).with(DayOfWeek.MONDAY);
+ *     LocalDate lastSunday = lastMonday.with(DayOfWeek.SUNDAY);
+ *     List<AggregatedStatusGroup> aggregated = TransactionStatusAggregationService.aggregateStatusCountByDateRange(lastMonday, lastSunday, logger);
+ * </code>
  */
 public class TransactionStatusAggregationService {
 
