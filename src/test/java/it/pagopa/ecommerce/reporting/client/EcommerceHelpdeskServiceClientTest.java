@@ -1,12 +1,15 @@
 package it.pagopa.ecommerce.reporting.client;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.microsoft.azure.functions.ExecutionContext;
 import it.pagopa.ecommerce.reporting.clients.EcommerceHelpdeskServiceClient;
 import org.junit.BeforeClass;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.platform.commons.logging.LoggerFactory;
 import org.junit.runner.RunWith;
+import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.powermock.core.classloader.annotations.PrepareForTest;
@@ -22,7 +25,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(SystemStubsExtension.class)
-@ExtendWith(MockitoExtension.class)
 public class EcommerceHelpdeskServiceClientTest {
 
     @SystemStub
@@ -35,9 +37,24 @@ public class EcommerceHelpdeskServiceClientTest {
             "/apiEndpoint"
     );
 
+
+    private Logger mockLogger;
+
+    @BeforeEach
+    void setUp() {
+        mockLogger = mock(Logger.class);
+        // service = new TransactionStatusAggregationService(mockTableClient);
+    }
+
+    @Mock
+    ExecutionContext context;
+
+    @Spy
+    EcommerceHelpdeskServiceClient ecommerceHelpdeskServiceClient;
+
     @Test
     public void instanceTest() {
-        assertNotNull(EcommerceHelpdeskServiceClient.getInstance());
+        assertNotNull(EcommerceHelpdeskServiceClient.getInstance(mockLogger));
     }
 
     /*

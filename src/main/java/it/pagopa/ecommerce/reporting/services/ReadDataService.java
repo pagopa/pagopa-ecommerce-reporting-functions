@@ -3,21 +3,20 @@ package it.pagopa.ecommerce.reporting.services;
 import com.fasterxml.jackson.databind.JsonNode;
 import it.pagopa.ecommerce.reporting.clients.EcommerceHelpdeskServiceClient;
 import it.pagopa.ecommerce.reporting.utils.MapParametersUtils;
-import lombok.*;
 
 import java.time.OffsetDateTime;
 import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.logging.Logger;
 
-@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class ReadDataService {
-
+    private final Logger logger;
     private static ReadDataService instance = null;
-    private final Set<String> ecommerceClientList = MapParametersUtils
-            .parseSetString(System.getenv("ECOMMERCE_CLIENTS_LIST")).fold(exception -> {
-                throw exception;
-            }, Function.identity());
+
     private final Set<String> paymentTypeCodeList = MapParametersUtils
             .parseSetString(System.getenv("ECOMMERCE_PAYMENT_METHODS_TYPE_CODE_LIST")).fold(exception -> {
                 throw exception;
@@ -31,60 +30,48 @@ public class ReadDataService {
                     Function.identity()
             );
 
-    public static ReadDataService getInstance() {
+    private ReadDataService(Logger logger) {
+        this.logger = logger;
+    }
+
+    public static ReadDataService getInstance(Logger logger) {
         if (instance == null) {
-            instance = new ReadDataService();
+            instance = new ReadDataService(logger);
         }
         return instance;
     }
 
-    public List<JsonNode> readData(Logger logger) {
-        OffsetDateTime now = OffsetDateTime.now();
-        OffsetDateTime startDateTime = OffsetDateTime.of(
-                now.getYear(),
-                now.getMonthValue(),
-                now.getDayOfMonth(),
-                now.getHour(),
-                0,
-                0,
-                0,
-                now.getOffset()
-        ).minusHours(2);
-        OffsetDateTime endDateTime = OffsetDateTime.of(
-                now.getYear(),
-                now.getMonthValue(),
-                now.getDayOfMonth(),
-                now.getHour(),
-                0,
-                0,
-                0,
-                now.getOffset()
-        ).minusHours(1).minusNanos(1);
-        EcommerceHelpdeskServiceClient ecommerceHelpdeskServiceClient = getEcommerceHelpdeskServiceClient();
-        List<JsonNode> transactionMetricsResponseDtoList = new ArrayList<>();
-        ecommerceClientList.forEach(
-                client -> paymentTypeCodeList.forEach(
-                        paymentMethodTypeCode -> pspList.get(paymentMethodTypeCode).forEach(pspId -> {
-                            transactionMetricsResponseDtoList.add(
-                                    ecommerceHelpdeskServiceClient.fetchTransactionMetrics(
-                                            client,
-                                            pspId,
-                                            paymentMethodTypeCode,
-                                            startDateTime,
-                                            endDateTime,
-                                            logger
-                                    )
+    public void readAndWriteData(String clientId) {
+        OffsetDateTime startDateTime = OffsetDateTime.now().minusHours(2).withSecond(0).withMinute(0).withNano(0);
+        OffsetDateTime endDateTime = startDateTime.plusHours(1).minusNanos(1);
+        EcommerceHelpdeskServiceClient ecommerceHelpdeskServiceClient = getEcommerceHelpdeskServiceClient(this.logger);
+        AtomicInteger index = new AtomicInteger();
+        paymentTypeCodeList.forEach(
+                paymentMethodTypeCode -> pspList.get(paymentMethodTypeCode).forEach(pspId -> {
+                    index.getAndIncrement();
+                    TimerTask task = new TimerTask() {
+                        @Override
+                        public void run() {
+                            JsonNode node = ecommerceHelpdeskServiceClient.fetchTransactionMetrics(
+                                    clientId,
+                                    pspId,
+                                    paymentMethodTypeCode,
+                                    startDateTime,
+                                    endDateTime
                             );
+                            logger.info("[LOGGER] Node result " + node);
+                            // write(node);
                         }
+                    };
+                    ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+                    scheduledExecutorService.schedule(task, index.get(), TimeUnit.SECONDS);
+                }
 
-                        )
                 )
         );
-        return transactionMetricsResponseDtoList;
     }
 
-    protected EcommerceHelpdeskServiceClient getEcommerceHelpdeskServiceClient() {
-        return EcommerceHelpdeskServiceClient.getInstance();
+    protected EcommerceHelpdeskServiceClient getEcommerceHelpdeskServiceClient(Logger logger) {
+        return EcommerceHelpdeskServiceClient.getInstance(logger);
     }
-
 }

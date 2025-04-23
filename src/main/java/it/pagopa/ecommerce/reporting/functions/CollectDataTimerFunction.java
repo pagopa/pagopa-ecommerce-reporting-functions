@@ -15,34 +15,85 @@ import java.util.logging.Logger;
 
 public class CollectDataTimerFunction {
 
+    private final Set<String> ecommerceClientList = MapParametersUtils
+            .parseSetString(System.getenv("ECOMMERCE_CLIENTS_LIST")).fold(exception -> {
+                throw exception;
+            }, Function.identity());
+
     public CollectDataTimerFunction() {
     }
 
-    @FunctionName("readAndWriteData")
-    public void readAndWriteData(
-                                 @TimerTrigger(
-                                         name = "readAndWriteDataTrigger", schedule = "* * * * * *"
-                                 ) String timerInfo,
-                                 ExecutionContext context
+    @FunctionName("readAndWriteData_CHECKOUT")
+    public void readAndWriteDataCheckout(
+                                         @TimerTrigger(
+                                                 name = "readAndWriteDataTrigger", schedule = "%NCRON_SCHEDULE_CHECKOUT%"
+                                         ) String timerInfo,
+                                         ExecutionContext context
+    ) {
+
+        String clientId = "CHECKOUT";
+        executeFunction(timerInfo, context, clientId);
+
+    }
+
+    @FunctionName("readAndWriteData_IO")
+    public void readAndWriteDataIO(
+                                   @TimerTrigger(
+                                           name = "readAndWriteDataTrigger", schedule = "%NCRON_SCHEDULE_IO%"
+                                   ) String timerInfo,
+                                   ExecutionContext context
+    ) {
+        String clientId = "IO";
+        executeFunction(timerInfo, context, clientId);
+    }
+
+    @FunctionName("readAndWriteData_CHECKOUT_CART")
+    public void readAndWriteDataCheckoutCart(
+                                             @TimerTrigger(
+                                                     name = "readAndWriteDataTrigger", schedule = "%NCRON_SCHEDULE_CHECKOUT_CART%"
+                                             ) String timerInfo,
+                                             ExecutionContext context
+    ) {
+        String clientId = "CHECKOUT_CART";
+        executeFunction(timerInfo, context, clientId);
+    }
+
+    @FunctionName("readAndWriteData_WISP_REDIRECT")
+    public void readAndWriteDataWispRedirect(
+                                             @TimerTrigger(
+                                                     name = "readAndWriteDataTrigger", schedule = "%NCRON_SCHEDULE_WISP_REDIRECT%"
+                                             ) String timerInfo,
+                                             ExecutionContext context
+    ) {
+        String clientId = "WISP_REDIRECT";
+        executeFunction(timerInfo, context, clientId);
+    }
+
+    private void executeFunction(
+                                 String timerInfo,
+                                 ExecutionContext context,
+                                 String clientId
     ) {
         Logger logger = context.getLogger();
-        logger.log(
-                Level.CONFIG,
-                () -> "[CollectDataTimerFunction][id=" + context.getInvocationId() + "] new timer " + timerInfo
-        );
-        ReadDataService readDataService = this.getReadDataServiceInstance();
-        WriteDataService writeDataService = this.getWriteDataServiceInstance();
+        if (!ecommerceClientList.contains(clientId)) {
+            logger.log(
+                    Level.WARNING,
+                    () -> "[CollectDataTimerFunction][client=" + clientId
+                            + "isn't present in the client list. No run will be performed for this client. Please update the list or delete this function]"
+            );
+        } else {
+            logger.log(
+                    Level.CONFIG,
+                    () -> "[CollectDataTimerFunction][client=" + clientId + "+id=" + context.getInvocationId()
+                            + "] new timer " + timerInfo
+            );
+            ReadDataService readDataService = this.getReadDataServiceInstance(context.getLogger());
+            readDataService.readAndWriteData(clientId);
+        }
 
-        List<JsonNode> transactionMetricsResponseDtoList = readDataService.readData(logger);
-        writeDataService.writeStateMetricsInTableStorage(transactionMetricsResponseDtoList.get(0), logger);
     }
 
-    protected ReadDataService getReadDataServiceInstance() {
-        return ReadDataService.getInstance();
+    protected ReadDataService getReadDataServiceInstance(Logger logger) {
+        return ReadDataService.getInstance(logger);
     }
-
-    protected WriteDataService getWriteDataServiceInstance() {
-        return WriteDataService.getInstance();
-    }
-
 }

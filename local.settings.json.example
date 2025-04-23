@@ -11,6 +11,10 @@
     "HELPDESK_SERVICE_API_ENDPOINT":"apiEndpoint",
     "ECOMMERCE_REPORTING_TABLE":"tableName",
     "ECOMMERCE_REPORTING_CONNECTION_STRING": "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;QueueEndpoint=http://127.0.0.1:10001/devstoreaccount1;TableEndpoint=http://127.0.0.1:10002/devstoreaccount1;"
+    "NCRON_SCHEDULE_CHECKOUT": "0 1 * * * *",
+    "NCRON_SCHEDULE_IO": "0 11 * * * *",
+    "NCRON_SCHEDULE_CHECKOUT_CART": "0 21 * * * *",
+    "NCRON_SCHEDULE_WISP_REDIRECT": "0 31 * * * *"
   },
   "Host": {
     "LocalHttpPort": 8080
