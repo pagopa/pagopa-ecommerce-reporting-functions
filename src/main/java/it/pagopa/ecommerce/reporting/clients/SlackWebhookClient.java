@@ -43,9 +43,6 @@ public class SlackWebhookClient {
             return objectMapper.createObjectNode();
         }
 
-        // Log the payload for debugging (consider removing in production)
-        logger.info("Sending payload to Slack: " + jsonPayload);
-
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
             HttpPost httpPost = new HttpPost(WEBHOOK_ENDPOINT);
             httpPost.setHeader("Content-Type", "application/json");
