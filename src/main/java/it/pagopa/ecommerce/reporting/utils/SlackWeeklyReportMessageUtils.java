@@ -7,7 +7,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
-public class SlackWeeklyReportUtils {
+public class SlackWeeklyReportMessageUtils {
 
     /**
      * Map of status keys to their Italian translations and emojis
@@ -19,7 +19,32 @@ public class SlackWeeklyReportUtils {
             Map.entry("CANCELED", new AbstractMap.SimpleEntry<>("Cancellate", ":no_entry_sign:")),
             Map.entry("CLOSED", new AbstractMap.SimpleEntry<>("Chiuse", ":lock:")),
             Map.entry("UNAUTHORIZED", new AbstractMap.SimpleEntry<>("Non autorizzate", ":x:")),
-            Map.entry("REFUNDED", new AbstractMap.SimpleEntry<>("Rimborsate", ":money_with_wings:"))
+            Map.entry("REFUNDED", new AbstractMap.SimpleEntry<>("Rimborsate", ":money_with_wings:")),
+            Map.entry(
+                    "AUTHORIZATION_COMPLETED",
+                    new AbstractMap.SimpleEntry<>("Autorizzazione completata", ":large_green_circle:")
+            ),
+            Map.entry(
+                    "AUTHORIZATION_REQUESTED",
+                    new AbstractMap.SimpleEntry<>("Autorizzazione richiesta", ":large_purple_circle:")
+            ),
+            Map.entry(
+                    "CANCELLATION_EXPIRED",
+                    new AbstractMap.SimpleEntry<>("Cancellazione scaduta", ":large_orange_circle:")
+            ),
+            Map.entry(
+                    "CANCELLATION_REQUESTED",
+                    new AbstractMap.SimpleEntry<>("Cancellazione richiesta", ":large_yellow_circle:")
+            ),
+            Map.entry("CLOSURE_ERROR", new AbstractMap.SimpleEntry<>("Closure in errore", ":red_circle:")),
+            Map.entry("CLOSURE_REQUESTED", new AbstractMap.SimpleEntry<>("Closure richiesta", ":white_circle:")),
+            Map.entry(
+                    "EXPIRED_NOT_AUTHORIZED",
+                    new AbstractMap.SimpleEntry<>("Scadute - non autorizzate", ":large_orange_circle:")
+            ),
+            Map.entry("REFUND_ERROR", new AbstractMap.SimpleEntry<>("Errore rimborso", ":red_circle:")),
+            Map.entry("REFUND_REQUESTED", new AbstractMap.SimpleEntry<>("Rimborso richiesto", ":large_orange_circle:"))
+
     );
 
     /**
@@ -29,9 +54,11 @@ public class SlackWeeklyReportUtils {
             Map.entry("PAYPAL", new AbstractMap.SimpleEntry<>("PayPal", ":paypal:")),
             Map.entry("BANK_TRANSFER", new AbstractMap.SimpleEntry<>("Tramite banca", ":bank:")),
             Map.entry("CREDIT_CARD", new AbstractMap.SimpleEntry<>("Carta di credito", ":credit_card:")),
+            Map.entry("CREDIT", new AbstractMap.SimpleEntry<>("Carta di credito", ":credit_card:")),
             Map.entry("DEBIT_CARD", new AbstractMap.SimpleEntry<>("Carta di debito", ":credit_card:")),
+            Map.entry("DEBIT", new AbstractMap.SimpleEntry<>("Carta di debito", ":credit_card:")),
             // Not a possible key, it's a fallback
-            Map.entry("GENERIC", new AbstractMap.SimpleEntry<>("Generico", ":money_bag:"))
+            Map.entry("GENERIC", new AbstractMap.SimpleEntry<>("<not_used>", ":moneybag:"))
     );
 
     /**
@@ -80,12 +107,10 @@ public class SlackWeeklyReportUtils {
      *
      * @return Formatted Slack message in JSON format
      */
-    public static String createAggregatedWeeklyReport() throws JsonProcessingException {
+    public static String createAggregatedWeeklyReport(List<AggregatedStatusGroup> aggregatedGroups)
+            throws JsonProcessingException {
         // Calculate date range
         DateRange dateRange = calculateDateRange();
-
-        // Mock data, TODO: use Simo service
-        List<AggregatedStatusGroup> aggregatedGroups = createMockData();
 
         // Sort aggregated groups
         sortAggregatedGroups(aggregatedGroups);
@@ -233,7 +258,7 @@ public class SlackWeeklyReportUtils {
             translation = PAYMENT_TYPE_CODE.get(paymentTypeCode);
             enhancedPaymentTypeCode = translation.getKey();
         } else {
-            translation = PAYMENT_TYPE_CODE.get(paymentTypeCode);
+            translation = PAYMENT_TYPE_CODE.get("GENERIC");
             enhancedPaymentTypeCode = paymentTypeCode;
         }
 
@@ -280,7 +305,7 @@ public class SlackWeeklyReportUtils {
      *
      * @return List of mock AggregatedStatusGroup objects
      */
-    private static List<AggregatedStatusGroup> createMockData() {
+    public static List<AggregatedStatusGroup> createMockData() {
         List<AggregatedStatusGroup> mockData = new ArrayList<>();
 
         // Define some status fields
