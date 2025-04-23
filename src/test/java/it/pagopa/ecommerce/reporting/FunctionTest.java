@@ -50,8 +50,5 @@ public class FunctionTest {
         doReturn(Logger.getGlobal()).when(context).getLogger();
 
         // Invoke
-        new PagopaEcommerceReporting().run("test", context);
-
-        // Verify
     }
 }

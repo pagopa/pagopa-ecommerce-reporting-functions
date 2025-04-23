@@ -1,4 +1,4 @@
-package it.pagopa.ecommerce.reporting;
+package it.pagopa.ecommerce.reporting.functions;
 
 import com.microsoft.azure.functions.ExecutionContext;
 import com.microsoft.azure.functions.HttpMethod;
