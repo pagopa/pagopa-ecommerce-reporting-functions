@@ -19,39 +19,7 @@ public class SlackDateRangeReportMessageUtils {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.ITALIAN);
 
-    // Translation constants
-    private static final Map<String, TranslationEntry> STATUS_TRANSLATIONS = Map.ofEntries(
-            entry("ACTIVATED", "Attivate", ":white_check_mark:"),
-            entry("NOTIFIED_OK", "Complete con notifica", ":tada:"),
-            entry("EXPIRED", "Scadute", ":alarm_clock:"),
-            entry("CANCELED", "Cancellate", ":no_entry_sign:"),
-            entry("CLOSED", "Chiuse", ":lock:"),
-            entry("UNAUTHORIZED", "Non autorizzate", ":x:"),
-            entry("REFUNDED", "Rimborsate", ":money_with_wings:"),
-            entry("AUTHORIZATION_COMPLETED", "Autorizzazione completata", ":large_green_circle:"),
-            entry("AUTHORIZATION_REQUESTED", "Autorizzazione richiesta", ":large_purple_circle:"),
-            entry("CANCELLATION_EXPIRED", "Cancellazione scaduta", ":large_orange_circle:"),
-            entry("CANCELLATION_REQUESTED", "Cancellazione richiesta", ":large_yellow_circle:"),
-            entry("CLOSURE_ERROR", "Closure in errore", ":red_circle:"),
-            entry("CLOSURE_REQUESTED", "Closure richiesta", ":white_circle:"),
-            entry("EXPIRED_NOT_AUTHORIZED", "Scadute - non autorizzate", ":large_orange_circle:"),
-            entry("REFUND_ERROR", "Errore rimborso", ":red_circle:"),
-            entry("REFUND_REQUESTED", "Rimborso richiesto", ":large_orange_circle:")
-    );
-
-    private static final Map<String, TranslationEntry> PAYMENT_TYPE_CODE = Map.ofEntries(
-            entry("PAYPAL", "PayPal", ":paypal:"),
-            entry("BANK_TRANSFER", "Tramite banca", ":bank:"),
-            entry("CREDIT_CARD", "Carta di credito", ":credit_card:"),
-            entry("CREDIT", "Carta di credito", ":credit_card:"),
-            entry("DEBIT_CARD", "Carta di debito", ":credit_card:"),
-            entry("DEBIT", "Carta di debito", ":credit_card:"),
-            // Fallback entry
-            entry("GENERIC", "<not_used>", ":moneybag:")
-    );
-
-    private static final String DEFAULT_STATUS_EMOJI = ":black_circle:";
-    private static final String PAGOPA_LOGO_URL = "https://pagopa.portaleamministrazionetrasparente.it/moduli/output_media.php?file=enti_trasparenza/2197912210O__Ologo-pagopa-spa.png";
+    private static final String PAGOPA_LOGO_URL = "https://developer.pagopa.it/gitbook/docs/8phwN5u2QXllSKsqBjQU/.gitbook/assets/logo_asset.png";
 
     /**
      * Creates an aggregated weekly report message for Slack.
@@ -134,9 +102,9 @@ public class SlackDateRangeReportMessageUtils {
         Collections.sort(sortedKeys);
 
         for (String statusKey : sortedKeys) {
-            TranslationEntry entry = STATUS_TRANSLATIONS.getOrDefault(
+            SlackMessageConstants.TranslationEntry entry = SlackMessageConstants.STATUS_TRANSLATIONS.getOrDefault(
                     statusKey,
-                    new TranslationEntry(statusKey, DEFAULT_STATUS_EMOJI)
+                    new SlackMessageConstants.TranslationEntry(statusKey, SlackMessageConstants.DEFAULT_STATUS_EMOJI)
             );
 
             statusDetails.append("   ")
@@ -158,9 +126,12 @@ public class SlackDateRangeReportMessageUtils {
      * @return Formatted payment type string
      */
     static String formatPaymentTypeCode(String paymentTypeCode) {
-        TranslationEntry entry = PAYMENT_TYPE_CODE.getOrDefault(
+        SlackMessageConstants.TranslationEntry entry = SlackMessageConstants.PAYMENT_TYPE_CODE.getOrDefault(
                 paymentTypeCode,
-                new TranslationEntry(paymentTypeCode, PAYMENT_TYPE_CODE.get("GENERIC").emoji())
+                new SlackMessageConstants.TranslationEntry(
+                        paymentTypeCode,
+                        SlackMessageConstants.PAYMENT_TYPE_CODE.get("GENERIC").emoji()
+                )
         );
 
         return "   " + entry.emoji() + " *" + entry.translation() + "*";
@@ -174,7 +145,8 @@ public class SlackDateRangeReportMessageUtils {
         return createTextBlock(
                 "header",
                 "plain_text",
-                ":pagopa: Report Settimanale Transazioni " + startDate + " - " + endDate + " :pagopa:",
+                SlackMessageConstants.PAGOPA_EMOJI + " Report Settimanale Transazioni " + startDate + " - " + endDate
+                        + " " + SlackMessageConstants.PAGOPA_EMOJI,
                 true
         );
     }
@@ -209,7 +181,7 @@ public class SlackDateRangeReportMessageUtils {
     }
 
     static Map<String, Object> createGroupHeaderSection(AggregatedStatusGroup group) {
-        String text = ":bar_chart: STATISTICHE" +
+        String text = SlackMessageConstants.CHART_EMOJI + " STATISTICHE" +
                 "\n\t\t| Client *" + group.getClientId() +
                 "* con PSP *" + group.getPspId() +
                 "* e pagato con " + formatPaymentTypeCode(group.getPaymentTypeCode());
@@ -246,23 +218,5 @@ public class SlackDateRangeReportMessageUtils {
 
         block.put("text", text);
         return block;
-    }
-
-    // Helper method to create map entries
-    private static Map.Entry<String, TranslationEntry> entry(
-                                                             String key,
-                                                             String translation,
-                                                             String emoji
-    ) {
-        return Map.entry(key, new TranslationEntry(translation, emoji));
-    }
-
-    /**
-     * Record to store translation and emoji information.
-     */
-    record TranslationEntry(
-            String translation,
-            String emoji
-    ) {
     }
 }

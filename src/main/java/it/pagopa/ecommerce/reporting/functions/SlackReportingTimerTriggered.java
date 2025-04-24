@@ -26,7 +26,6 @@ public class SlackReportingTimerTriggered {
      */
     @FunctionName("SlackReportingTimerTriggered")
     public void run(
-                    // 3AM (minute 0) every day of the month, every month, on monday
                     @TimerTrigger(
                             name = "slackMessageTimerInfo", schedule = "%NCRON_SCHEDULE_SLACK_REPORTING%"
                     ) String timerInfo,
