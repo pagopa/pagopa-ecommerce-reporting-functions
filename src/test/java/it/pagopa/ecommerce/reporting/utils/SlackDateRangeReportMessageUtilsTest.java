@@ -69,13 +69,13 @@ class SlackDateRangeReportMessageUtilsTest {
     @Test
     void shouldFormatKnownPaymentType() {
         // Given
-        String paymentTypeCode = "CREDIT_CARD";
+        String paymentTypeCode = "CP";
 
         // When
         String result = SlackDateRangeReportMessageUtils.formatPaymentTypeCode(paymentTypeCode);
 
         // Then
-        assertEquals("   :credit_card: *Carta di credito*", result);
+        assertEquals("   :credit_card: *Carte*", result);
     }
 
     @Test
@@ -99,7 +99,7 @@ class SlackDateRangeReportMessageUtilsTest {
                 "2023-01-01",
                 "client1",
                 "psp1",
-                "CREDIT_CARD",
+                "CP",
                 Arrays.asList("ACTIVATED", "NOTIFIED_OK")
         );
         group1.incrementStatus("ACTIVATED", 50);
@@ -108,7 +108,7 @@ class SlackDateRangeReportMessageUtilsTest {
                 "2023-01-01",
                 "client2",
                 "psp2",
-                "PAYPAL",
+                "PPAL",
                 Arrays.asList("ACTIVATED", "NOTIFIED_OK")
         );
         group2.incrementStatus("ACTIVATED", 100);
@@ -117,7 +117,7 @@ class SlackDateRangeReportMessageUtilsTest {
                 "2023-01-01",
                 "client3",
                 "psp3",
-                "DEBIT_CARD",
+                "CP",
                 Arrays.asList("ACTIVATED", "NOTIFIED_OK")
         );
         group3.incrementStatus("ACTIVATED", 25);
@@ -144,7 +144,7 @@ class SlackDateRangeReportMessageUtilsTest {
                 "2023-01-01",
                 "client1",
                 "psp1",
-                "CREDIT_CARD",
+                "CP",
                 Arrays.asList("ACTIVATED", "NOTIFIED_OK")
         );
         group1.incrementStatus("ACTIVATED", 50);
@@ -153,7 +153,7 @@ class SlackDateRangeReportMessageUtilsTest {
                 "2023-01-01",
                 "client2",
                 "psp2",
-                "PAYPAL",
+                "PPAL",
                 Arrays.asList("NOTIFIED_OK")
         );
         group2.incrementStatus("NOTIFIED_OK", 100);
@@ -199,7 +199,7 @@ class SlackDateRangeReportMessageUtilsTest {
 
         // Then
         assertEquals("image", result.get("type"));
-        assertTrue(result.get("image_url").toString().contains("logo-pagopa-spa.png"));
+        assertTrue(result.get("image_url").toString().contains("logo_asset.png"));
         assertEquals("PagoPA Logo", result.get("alt_text"));
         assertEquals(474, result.get("image_width"));
         assertEquals(133, result.get("image_height"));
@@ -221,7 +221,7 @@ class SlackDateRangeReportMessageUtilsTest {
                 "2023-01-01",
                 "testClient",
                 "testPsp",
-                "CREDIT_CARD",
+                "CP",
                 Collections.emptyList()
         );
 
@@ -239,7 +239,7 @@ class SlackDateRangeReportMessageUtilsTest {
 
         assertTrue(text.contains("Client *testClient*"));
         assertTrue(text.contains("PSP *testPsp*"));
-        assertTrue(text.contains("Carta di credito"));
+        assertTrue(text.contains("Carte"));
     }
 
     @Test
@@ -249,7 +249,7 @@ class SlackDateRangeReportMessageUtilsTest {
                 "2023-01-01",
                 "testClient",
                 "testPsp",
-                "CREDIT_CARD",
+                "CP",
                 Arrays.asList("ACTIVATED", "NOTIFIED_OK")
         );
         group.incrementStatus("ACTIVATED", 100);
@@ -303,7 +303,7 @@ class SlackDateRangeReportMessageUtilsTest {
                 "2023-01-01",
                 "client1",
                 "psp1",
-                "CREDIT_CARD",
+                "CP",
                 Arrays.asList("ACTIVATED", "NOTIFIED_OK")
         );
         group1.incrementStatus("ACTIVATED", 100);
@@ -313,7 +313,7 @@ class SlackDateRangeReportMessageUtilsTest {
                 "2023-01-01",
                 "client2",
                 "psp2",
-                "PAYPAL",
+                "PPAL",
                 Arrays.asList("ACTIVATED", "EXPIRED")
         );
         group2.incrementStatus("ACTIVATED", 50);
@@ -368,12 +368,12 @@ class SlackDateRangeReportMessageUtilsTest {
 
         // Check payment types - these might be translated in the output
         assertTrue(
-                result.contains("CREDIT_CARD") || result.contains("Carta di credito"),
-                "Result should contain CREDIT_CARD or its translation"
+                result.contains("CP") || result.contains("Carte"),
+                "Result should contain CP or its translation"
         );
         assertTrue(
-                result.contains("PAYPAL") || result.contains("PayPal"),
-                "Result should contain PAYPAL or its translation"
+                result.contains("PPAL") || result.contains("PayPal"),
+                "Result should contain PPAL or its translation"
         );
     }
 
@@ -402,7 +402,7 @@ class SlackDateRangeReportMessageUtilsTest {
                 "2023-01-01",
                 "client1",
                 "psp1",
-                "CREDIT_CARD",
+                "CP",
                 Arrays.asList("ACTIVATED", "NOTIFIED_OK")
         );
 
@@ -423,7 +423,7 @@ class SlackDateRangeReportMessageUtilsTest {
                 "2023-01-01",
                 "client1",
                 "psp1",
-                "CREDIT_CARD",
+                "CP",
                 Arrays.asList("ACTIVATED")
         );
 
@@ -441,7 +441,7 @@ class SlackDateRangeReportMessageUtilsTest {
                 "2023-01-01",
                 "client1",
                 "psp1",
-                "CREDIT_CARD",
+                "CP",
                 Arrays.asList("ACTIVATED", "NOTIFIED_OK")
         );
         group.incrementStatus("ACTIVATED", 100);
@@ -454,7 +454,7 @@ class SlackDateRangeReportMessageUtilsTest {
         assertTrue(result.contains("Date: 2023-01-01"));
         assertTrue(result.contains("ClientId: client1"));
         assertTrue(result.contains("PspId: psp1"));
-        assertTrue(result.contains("PaymentType: CREDIT_CARD"));
+        assertTrue(result.contains("PaymentType: CP"));
         assertTrue(result.contains("ACTIVATED=100"));
         assertTrue(result.contains("NOTIFIED_OK=80"));
     }
@@ -469,7 +469,7 @@ class SlackDateRangeReportMessageUtilsTest {
                 "2023-01-01",
                 "client1",
                 "psp1",
-                "CREDIT_CARD",
+                "CP",
                 statusFields
         );
 
