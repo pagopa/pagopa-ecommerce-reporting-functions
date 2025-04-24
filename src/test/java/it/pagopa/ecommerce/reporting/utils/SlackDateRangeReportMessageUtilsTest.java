@@ -75,7 +75,7 @@ class SlackDateRangeReportMessageUtilsTest {
         String result = SlackDateRangeReportMessageUtils.formatPaymentTypeCode(paymentTypeCode);
 
         // Then
-        assertEquals("   :credit_card: *Carta di credito*", result);
+        assertEquals("   :credit_card: *Carte*", result);
     }
 
     @Test
@@ -239,7 +239,7 @@ class SlackDateRangeReportMessageUtilsTest {
 
         assertTrue(text.contains("Client *testClient*"));
         assertTrue(text.contains("PSP *testPsp*"));
-        assertTrue(text.contains("Carta di credito"));
+        assertTrue(text.contains("Carte"));
     }
 
     @Test
@@ -371,7 +371,7 @@ class SlackDateRangeReportMessageUtilsTest {
 
         // Check payment types - these might be translated in the output
         assertTrue(
-                result.contains("CP") || result.contains("Carta di credito"),
+                result.contains("CP") || result.contains("Carte"),
                 "Result should contain CP or its translation"
         );
         assertTrue(
