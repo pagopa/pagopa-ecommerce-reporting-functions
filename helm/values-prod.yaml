@@ -83,6 +83,8 @@ microservice-chart:
     NCRON_SCHEDULE_CHECKOUT_CART: "0 21 * * * *"
     NCRON_SCHEDULE_WISP_REDIRECT: "0 31 * * * *"
     NCRON_SCHEDULE_SLACK_REPORTING: "0 0 9 * * Mon"
+    REPORT_START_DATE: ""
+    REPORT_END_DATE: ""
   envSecret:
     OTEL_EXPORTER_OTLP_HEADERS: elastic-otel-token-header
     ECOMMERCE_SLACK_REPORTING_WEBHOOK_ENDPOINT: ecommerce-reporting-webhook-url-slack

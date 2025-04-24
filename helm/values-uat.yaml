@@ -89,6 +89,8 @@ microservice-chart:
     AzureWebJobsStorage: ecommerce-storage-reporting-connection-string
     HELPDESK_SERVICE_API_KEY: helpdesk-service-api-key-for-reporting
     ECOMMERCE_REPORTING_CONNECTION_STRING: ecommerce-storage-reporting-connection-string
+    REPORT_START_DATE: ""
+    REPORT_END_DATE: ""
   keyvault:
     name: "pagopa-u-ecommerce-kv"
     tenantId: "7788edaf-0346-4068-9d79-c868aed15b3d"
