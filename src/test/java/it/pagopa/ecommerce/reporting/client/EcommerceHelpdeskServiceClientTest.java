@@ -6,8 +6,10 @@ import com.microsoft.azure.functions.ExecutionContext;
 import it.pagopa.ecommerce.reporting.clients.EcommerceHelpdeskServiceClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.Spy;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.OffsetDateTime;
 import java.util.logging.Logger;
@@ -15,19 +17,15 @@ import java.util.logging.Logger;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+@ExtendWith(MockitoExtension.class)
 public class EcommerceHelpdeskServiceClientTest {
 
-    private Logger mockLogger;
-
-    @BeforeEach
-    void setUp() {
-        mockLogger = mock(Logger.class);
-    }
+    @Mock
+    Logger mockLogger;
 
     @Mock
     ExecutionContext context;
 
-    @Spy
     EcommerceHelpdeskServiceClient ecommerceHelpdeskServiceClient;
 
     @Test
