@@ -72,7 +72,7 @@ public class SlackWebhookClient {
 
                 // Check for Slack error responses
                 if (statusCode != 200) {
-                    logger.info("Error response from Slack: " + responseBody);
+                    logger.info("Error response from Slack: " + responseBody + ": body: " + jsonPayload);
                 }
             }
         } catch (Exception e) {
