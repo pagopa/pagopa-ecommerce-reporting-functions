@@ -36,7 +36,7 @@ import java.util.logging.Logger;
 public class TransactionStatusAggregationService {
 
     private final String CONNECTION_STRING = System.getenv("ECOMMERCE_REPORTING_CONNECTION_STRING");
-    private final String TRANSACTIONS_STATUS_TABLE = "StateReporting";
+    private final String TRANSACTIONS_STATUS_TABLE = System.getenv("ECOMMERCE_REPORTING_TABLE");
 
     private final TableClient tableClient;
 
