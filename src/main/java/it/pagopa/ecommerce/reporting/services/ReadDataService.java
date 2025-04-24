@@ -16,6 +16,8 @@ import java.util.logging.Logger;
 public class ReadDataService {
     private final Logger logger;
     private static ReadDataService instance = null;
+    private final WriteDataService writeDataService;
+    private final EcommerceHelpdeskServiceClient ecommerceHelpdeskServiceClient;
     // private WriteDataService writeDataService = null;
 
     private final Set<String> paymentTypeCodeList = MapParametersUtils
@@ -31,8 +33,10 @@ public class ReadDataService {
                     Function.identity()
             );
 
-    public ReadDataService(Logger logger) {
+    private ReadDataService(Logger logger) {
         this.logger = logger;
+        this.writeDataService = WriteDataService.getInstance();
+        this.ecommerceHelpdeskServiceClient = EcommerceHelpdeskServiceClient.getInstance(this.logger);
     }
 
     public static ReadDataService getInstance(Logger logger) {
@@ -45,7 +49,6 @@ public class ReadDataService {
     public void readAndWriteData(String clientId) {
         OffsetDateTime startDateTime = OffsetDateTime.now().minusHours(2).withSecond(0).withMinute(0).withNano(0);
         OffsetDateTime endDateTime = startDateTime.plusHours(1).minusNanos(1);
-        EcommerceHelpdeskServiceClient ecommerceHelpdeskServiceClient = getEcommerceHelpdeskServiceClient(this.logger);
         AtomicInteger index = new AtomicInteger(0);
         logger.info("Start read and write");
         ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
@@ -66,7 +69,7 @@ public class ReadDataService {
                                     endDateTime
                             );
                             logger.info("[LOGGER] Node result " + node);
-                            getWriteDataService()
+                            writeDataService
                                     .writeStateMetricsInTableStorage(
                                             node,
                                             logger,
@@ -85,11 +88,7 @@ public class ReadDataService {
         );
     }
 
-    protected EcommerceHelpdeskServiceClient getEcommerceHelpdeskServiceClient(Logger logger) {
+    private EcommerceHelpdeskServiceClient getEcommerceHelpdeskServiceClient(Logger logger) {
         return EcommerceHelpdeskServiceClient.getInstance(logger);
-    }
-
-    protected WriteDataService getWriteDataService() {
-        return WriteDataService.getInstance();
     }
 }
