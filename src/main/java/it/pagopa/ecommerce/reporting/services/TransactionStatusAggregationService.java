@@ -88,9 +88,9 @@ public class TransactionStatusAggregationService {
 
             for (TableEntity entity : entities) {
 
-                String clientId = String.valueOf(entity.getProperty("ClientId"));
-                String pspId = String.valueOf(entity.getProperty("PspId"));
-                String paymentType = String.valueOf(entity.getProperty("PaymentTypeCode"));
+                String clientId = String.valueOf(entity.getProperty("clientId"));
+                String pspId = String.valueOf(entity.getProperty("pspId"));
+                String paymentType = String.valueOf(entity.getProperty("paymentTypeCode"));
 
                 String key = String.join("|", partitionKey, clientId, pspId, paymentType);
                 AggregatedStatusGroup group = aggregatedMap.get(key);

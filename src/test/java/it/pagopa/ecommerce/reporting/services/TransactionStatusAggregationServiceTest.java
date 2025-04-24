@@ -36,17 +36,17 @@ class TransactionStatusAggregationServiceTest {
         String partitionKey = "2024-04-01";
 
         TableEntity entityFirst = new TableEntity(partitionKey, "row1");
-        entityFirst.addProperty("ClientId", "clientA");
-        entityFirst.addProperty("PspId", "pspX");
-        entityFirst.addProperty("PaymentTypeCode", "PT1");
+        entityFirst.addProperty("clientId", "clientA");
+        entityFirst.addProperty("pspId", "pspX");
+        entityFirst.addProperty("paymentTypeCode", "PT1");
         entityFirst.addProperty("ACTIVATED", 3);
         entityFirst.addProperty("CLOSED", 1);
         entityFirst.addProperty("NOTIFIED_OK", 2);
 
         TableEntity entitySecond = new TableEntity(partitionKey, "row1");
-        entitySecond.addProperty("ClientId", "clientA");
-        entitySecond.addProperty("PspId", "pspX");
-        entitySecond.addProperty("PaymentTypeCode", "PT1");
+        entitySecond.addProperty("clientId", "clientA");
+        entitySecond.addProperty("pspId", "pspX");
+        entitySecond.addProperty("paymentTypeCode", "PT1");
         entitySecond.addProperty("ACTIVATED", 3);
         entitySecond.addProperty("CLOSED", 5);
         entitySecond.addProperty("NOTIFIED_OK", 9);
