@@ -1,9 +1,8 @@
 
-package it.pagopa.ecommerce.reporting.client;
+package it.pagopa.ecommerce.reporting.clients;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.microsoft.azure.functions.ExecutionContext;
-import it.pagopa.ecommerce.reporting.clients.EcommerceHelpdeskServiceClient;
 import org.apache.http.StatusLine;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
