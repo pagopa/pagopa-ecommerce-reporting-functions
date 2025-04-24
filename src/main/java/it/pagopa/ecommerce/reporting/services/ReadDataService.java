@@ -43,6 +43,33 @@ public class ReadDataService {
         return instance;
     }
 
+    public void readAndWriteData(
+                                 String clientId,
+                                 String paymentMethodTypeCode,
+                                 String pspId,
+                                 OffsetDateTime startDateTime,
+                                 OffsetDateTime endDateTime
+    ) {
+        EcommerceHelpdeskServiceClient ecommerceHelpdeskServiceClient = getEcommerceHelpdeskServiceClient(this.logger);
+        JsonNode node = ecommerceHelpdeskServiceClient.fetchTransactionMetrics(
+                clientId,
+                pspId,
+                paymentMethodTypeCode,
+                startDateTime,
+                endDateTime
+        );
+        logger.info("Node result " + node);
+        getWriteDataService()
+                .writeStateMetricsInTableStorage(
+                        node,
+                        logger,
+                        clientId,
+                        paymentMethodTypeCode,
+                        pspId
+                );
+        logger.info("Storage write completed");
+    }
+
     public void readAndWriteData(String clientId) {
         OffsetDateTime startDateTime = OffsetDateTime.now().minusHours(2).withSecond(0).withMinute(0).withNano(0);
         OffsetDateTime endDateTime = startDateTime.plusHours(1).minusNanos(1);
