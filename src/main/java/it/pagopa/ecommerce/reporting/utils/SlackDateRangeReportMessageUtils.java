@@ -40,18 +40,24 @@ public class SlackDateRangeReportMessageUtils {
     );
 
     private static final Map<String, TranslationEntry> PAYMENT_TYPE_CODE = Map.ofEntries(
-            entry("PAYPAL", "PayPal", ":paypal:"),
-            entry("BANK_TRANSFER", "Tramite banca", ":bank:"),
-            entry("CREDIT_CARD", "Carta di credito", ":credit_card:"),
-            entry("CREDIT", "Carta di credito", ":credit_card:"),
-            entry("DEBIT_CARD", "Carta di debito", ":credit_card:"),
-            entry("DEBIT", "Carta di debito", ":credit_card:"),
+            entry("PPAL", "PayPal", ":paypal:"),
+            entry("CP", "Carta di credito", ":credit_card:"),
+            entry("BPAY", "Bancomat Pay", ":bank:"),
+            entry("RPIC", "Conto Intesa", ":bank:"),
+            entry("RBPS", "SCRIGNO Internet Banking", ":bank:"),
+            entry("RBPP", "PostePAY", ":bank:"),
+            entry("RBPR", "Poste addebito in conto Retail", ":bank:"),
+            entry("MYBK", "MyBank", ":bank:"),
+            entry("SATY", "Satispay", ":satispay:"),
+            entry("APPL", "Apple", ":apple:"),
+            entry("RICO", "Redirect IConto", ":bank:"),
+            entry("GOOG", "Google Pay", ":google-pay:"),
             // Fallback entry
             entry("GENERIC", "<not_used>", ":moneybag:")
     );
 
     private static final String DEFAULT_STATUS_EMOJI = ":black_circle:";
-    private static final String PAGOPA_LOGO_URL = "https://pagopa.portaleamministrazionetrasparente.it/moduli/output_media.php?file=enti_trasparenza/2197912210O__Ologo-pagopa-spa.png";
+    private static final String PAGOPA_LOGO_URL = "https://developer.pagopa.it/gitbook/docs/8phwN5u2QXllSKsqBjQU/.gitbook/assets/logo_asset.png";
 
     /**
      * Creates an aggregated weekly report message for Slack.
