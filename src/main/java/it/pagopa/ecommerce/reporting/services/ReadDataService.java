@@ -31,9 +31,8 @@ public class ReadDataService {
                     Function.identity()
             );
 
-    private ReadDataService(Logger logger) {
+    public ReadDataService(Logger logger) {
         this.logger = logger;
-        // this.writeDataService = WriteDataService.getInstance();
     }
 
     public static ReadDataService getInstance(Logger logger) {
@@ -67,7 +66,6 @@ public class ReadDataService {
                                     endDateTime
                             );
                             logger.info("[LOGGER] Node result " + node);
-                            System.out.println("[SYSOUT] Node read " + node);
                             getWriteDataService()
                                     .writeStateMetricsInTableStorage(
                                             node,
@@ -76,7 +74,6 @@ public class ReadDataService {
                                             paymentMethodTypeCode,
                                             pspId
                                     );
-                            System.out.println("[SYSOUT] Node written ");
 
                         }
                     };

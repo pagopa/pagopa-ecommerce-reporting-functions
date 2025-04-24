@@ -332,9 +332,6 @@ class SlackDateRangeReportMessageUtilsTest {
         // Then
         assertNotNull(result);
 
-        // Print the result for debugging
-        System.out.println("Report result: " + result);
-
         // Check basic structure
         assertTrue(result.contains("blocks"), "Result should contain 'blocks'");
 
