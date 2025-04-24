@@ -41,8 +41,6 @@ public class MapParametersUtils {
             }
             return Either.right(paymentMethodPspMap);
         } catch (IOException ignored) {
-            // exception here is ignored on purpose in order to avoid secret configuration
-            // logging in case of wrong configured json string object
             return Either.left(new JobConfigurationException("Invalid json configuration map"));
         }
     }
