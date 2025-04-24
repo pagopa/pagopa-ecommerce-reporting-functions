@@ -2,8 +2,8 @@ apiVersion: v2
 name: pagopa-ecommerce-reporting-functions
 description: Microservice that handles reporting for ecommerce
 type: application
-version: 1.0.0
-appVersion: 1.0.0
+version: 1.0.1
+appVersion: 1.0.1
 dependencies:
   - name: microservice-chart
     version: 7.4.0
