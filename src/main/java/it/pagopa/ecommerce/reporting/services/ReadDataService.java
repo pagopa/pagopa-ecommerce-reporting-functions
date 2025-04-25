@@ -18,7 +18,6 @@ public class ReadDataService {
     private static ReadDataService instance = null;
     private final WriteDataService writeDataService;
     private final EcommerceHelpdeskServiceClient ecommerceHelpdeskServiceClient;
-    // private WriteDataService writeDataService = null;
 
     private final Set<String> paymentTypeCodeList = MapParametersUtils
             .parseSetString(System.getenv("ECOMMERCE_PAYMENT_METHODS_TYPE_CODE_LIST")).fold(exception -> {

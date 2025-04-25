@@ -25,7 +25,7 @@ public class EcommerceHelpdeskServiceClient {
     private static EcommerceHelpdeskServiceClient instance = null;
     private final Logger logger;
 
-    public EcommerceHelpdeskServiceClient(Logger logger) {
+    private EcommerceHelpdeskServiceClient(Logger logger) {
         this.logger = logger;
     }
 

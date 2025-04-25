@@ -54,7 +54,7 @@ public class EcommerceHelpdeskServiceClientTest {
 
     @Test
     public void fetchTransactionMetricsTestNoClientHttp() {
-        ecommerceHelpdeskServiceClient = new EcommerceHelpdeskServiceClient(mockLogger);
+        ecommerceHelpdeskServiceClient = EcommerceHelpdeskServiceClient.getInstance(mockLogger);
         JsonNode node = ecommerceHelpdeskServiceClient.fetchTransactionMetrics(
                 "clientId",
                 "pspId",
@@ -70,7 +70,7 @@ public class EcommerceHelpdeskServiceClientTest {
     public void fetchTransactionMetricsTestNoValidData() {
         mockStatic = mockStatic(HttpClients.class);
         when(HttpClients.createDefault()).thenReturn(httpClientMock);
-        ecommerceHelpdeskServiceClient = new EcommerceHelpdeskServiceClient(mockLogger);
+        ecommerceHelpdeskServiceClient = EcommerceHelpdeskServiceClient.getInstance(mockLogger);
         JsonNode node = ecommerceHelpdeskServiceClient.fetchTransactionMetrics(
                 null,
                 "pspId",
@@ -93,7 +93,7 @@ public class EcommerceHelpdeskServiceClientTest {
         );
         when(httpResponseMock.getEntity()).thenReturn(new StringEntity("{\"field\":\"1\"}", StandardCharsets.UTF_8));
 
-        ecommerceHelpdeskServiceClient = new EcommerceHelpdeskServiceClient(mockLogger);
+        ecommerceHelpdeskServiceClient = EcommerceHelpdeskServiceClient.getInstance(mockLogger);
         JsonNode node = ecommerceHelpdeskServiceClient.fetchTransactionMetrics(
                 "clientId",
                 "pspId",
