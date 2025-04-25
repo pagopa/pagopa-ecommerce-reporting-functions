@@ -381,4 +381,210 @@ class SlackReportingTimerTriggeredTest {
             assertThrows(RuntimeException.class, () -> function.run(timerInfo, mockContext));
         }
     }
+
+    @Test
+    void shouldSendMultipleMessagesWhenReportIsSplit() throws Exception {
+        // Given
+        String timerInfo = "timer info";
+        LocalDate fixedToday = LocalDate.of(2025, 4, 21); // A Monday
+        LocalDate expectedLastMonday = fixedToday.minusWeeks(1);
+        LocalDate expectedLastSunday = expectedLastMonday.with(DayOfWeek.SUNDAY);
+        String mockEndpoint = "https://hooks.slack-mock.com/services/test/webhook";
+
+        // Large list that would result in multiple messages
+        List<AggregatedStatusGroup> mockAggregatedStatuses = new ArrayList<>();
+        List<String> statusFields = Arrays.asList("ACTIVATED", "CLOSED", "NOTIFIED_OK", "EXPIRED");
+
+        // Add enough groups to exceed the 50 block limit
+        for (int i = 0; i < 20; i++) {
+            AggregatedStatusGroup group = new AggregatedStatusGroup(
+                    "2023-05-" + (i < 10 ? "0" + i : i),
+                    "client" + i,
+                    "psp" + i,
+                    "PT" + i,
+                    statusFields
+            );
+            group.incrementStatus("ACTIVATED", 100 - i);
+            group.incrementStatus("CLOSED", 50 - i);
+            group.incrementStatus("NOTIFIED_OK", 30 - i);
+            group.incrementStatus("EXPIRED", i);
+            mockAggregatedStatuses.add(group);
+        }
+
+        // Mock the aggregation service to return our mock statuses
+        when(
+                mockAggregationService.aggregateStatusCountByDateRange(
+                        eq(expectedLastMonday),
+                        eq(expectedLastSunday),
+                        any(Logger.class)
+                )
+        )
+                .thenReturn(mockAggregatedStatuses);
+
+        // Create mock report messages - simulate multiple messages returned
+        String[] mockReportMessages = {
+                "First part of the report",
+                "Second part of the report",
+                "Third part of the report"
+        };
+
+        try (MockedStatic<SlackDateRangeReportMessageUtils> mockedReportUtils = Mockito
+                .mockStatic(SlackDateRangeReportMessageUtils.class)) {
+            mockedReportUtils.when(
+                    () -> SlackDateRangeReportMessageUtils.createAggregatedWeeklyReport(
+                            eq(mockAggregatedStatuses),
+                            eq(expectedLastMonday),
+                            eq(expectedLastSunday),
+                            any(Logger.class)
+                    )
+            )
+                    .thenReturn(mockReportMessages);
+
+            // Create testable instance
+            TestableSlackReportingTimerTriggered function = new TestableSlackReportingTimerTriggered(
+                    mockEndpoint,
+                    fixedToday,
+                    mockAggregationService,
+                    mockSlackWebhookClient
+            );
+
+            // When
+            function.run(timerInfo, mockContext);
+
+            // Then
+            // Verify that the webhook client was called for each message
+            verify(mockSlackWebhookClient).postMessageToWebhook(mockReportMessages[0]);
+            verify(mockSlackWebhookClient).postMessageToWebhook(mockReportMessages[1]);
+            verify(mockSlackWebhookClient).postMessageToWebhook(mockReportMessages[2]);
+            verify(mockSlackWebhookClient, times(3)).postMessageToWebhook(anyString());
+
+            // Verify logging
+            verify(mockLogger).info("Sending 3 messages to Slack");
+            verify(mockLogger).info("Sending message 1 of 3");
+            verify(mockLogger).info("Sending message 2 of 3");
+            verify(mockLogger).info("Sending message 3 of 3");
+            verify(mockLogger).info("All messages sent successfully");
+        }
+    }
+
+    @Test
+    void shouldHandleExceptionDuringMultipleMessageSending() throws Exception {
+        // Given
+        String timerInfo = "timer info";
+        LocalDate fixedToday = LocalDate.of(2025, 4, 21);
+        String mockEndpoint = "https://hooks.slack-mock.com/services/test/webhook";
+
+        // Mock the aggregation service to return some results
+        when(mockAggregationService.aggregateStatusCountByDateRange(any(), any(), any()))
+                .thenReturn(new ArrayList<>());
+
+        // Create mock report messages
+        String[] mockReportMessages = {
+                "First part of the report",
+                "Second part of the report",
+                "Third part of the report"
+        };
+
+        try (MockedStatic<SlackDateRangeReportMessageUtils> mockedReportUtils = Mockito
+                .mockStatic(SlackDateRangeReportMessageUtils.class)) {
+            mockedReportUtils.when(
+                    () -> SlackDateRangeReportMessageUtils.createAggregatedWeeklyReport(
+                            any(),
+                            any(),
+                            any(),
+                            any()
+                    )
+            ).thenReturn(mockReportMessages);
+
+            // Mock the webhook client to throw an exception on the second message
+            doNothing().when(mockSlackWebhookClient).postMessageToWebhook(mockReportMessages[0]);
+            doThrow(new RuntimeException("Error sending to Slack"))
+                    .when(mockSlackWebhookClient).postMessageToWebhook(mockReportMessages[1]);
+
+            // Create testable instance
+            TestableSlackReportingTimerTriggered function = new TestableSlackReportingTimerTriggered(
+                    mockEndpoint,
+                    fixedToday,
+                    mockAggregationService,
+                    mockSlackWebhookClient
+            );
+
+            // The function should throw an exception when the second message fails
+            assertThrows(RuntimeException.class, () -> function.run(timerInfo, mockContext));
+
+            // Verify that the first message was sent successfully
+            verify(mockSlackWebhookClient).postMessageToWebhook(mockReportMessages[0]);
+
+            // Verify that the second message was attempted
+            verify(mockSlackWebhookClient).postMessageToWebhook(mockReportMessages[1]);
+
+            // Verify that the third message was never sent
+            verify(mockSlackWebhookClient, never()).postMessageToWebhook(mockReportMessages[2]);
+
+            // Verify logging
+            verify(mockLogger).info("Sending 3 messages to Slack");
+            verify(mockLogger).info("Sending message 1 of 3");
+            verify(mockLogger).info("Sending message 2 of 3");
+            verify(mockLogger, never()).info("All messages sent successfully");
+        }
+    }
+
+    @Test
+    void shouldHandleInterruptedExceptionDuringSleep() throws Exception {
+        // Given
+        String timerInfo = "timer info";
+        LocalDate fixedToday = LocalDate.of(2025, 4, 21);
+        String mockEndpoint = "https://hooks.slack-mock.com/services/test/webhook";
+
+        // Mock the aggregation service to return some results
+        when(mockAggregationService.aggregateStatusCountByDateRange(any(), any(), any()))
+                .thenReturn(new ArrayList<>());
+
+        // Create mock report messages
+        String[] mockReportMessages = {
+                "First part of the report",
+                "Second part of the report"
+        };
+
+        try (MockedStatic<SlackDateRangeReportMessageUtils> mockedReportUtils = Mockito
+                .mockStatic(SlackDateRangeReportMessageUtils.class);
+                // Mock Thread.sleep to throw InterruptedException
+                MockedStatic<Thread> mockedThread = Mockito.mockStatic(Thread.class)) {
+
+            mockedReportUtils.when(
+                    () -> SlackDateRangeReportMessageUtils.createAggregatedWeeklyReport(
+                            any(),
+                            any(),
+                            any(),
+                            any()
+                    )
+            ).thenReturn(mockReportMessages);
+
+            // Make Thread.sleep throw InterruptedException
+            mockedThread.when(() -> Thread.sleep(anyLong()))
+                    .thenThrow(new InterruptedException("Sleep interrupted"));
+
+            // Create testable instance
+            TestableSlackReportingTimerTriggered function = new TestableSlackReportingTimerTriggered(
+                    mockEndpoint,
+                    fixedToday,
+                    mockAggregationService,
+                    mockSlackWebhookClient
+            );
+
+            // When
+            function.run(timerInfo, mockContext);
+
+            // Then
+            // Verify both messages were sent despite the interruption
+            verify(mockSlackWebhookClient).postMessageToWebhook(mockReportMessages[0]);
+            verify(mockSlackWebhookClient).postMessageToWebhook(mockReportMessages[1]);
+
+            // Verify logging of the interruption
+            verify(mockLogger).warning(contains("Sleep interrupted"));
+
+            // Verify the thread was interrupted
+            mockedThread.verify(() -> Thread.currentThread().interrupt());
+        }
+    }
 }

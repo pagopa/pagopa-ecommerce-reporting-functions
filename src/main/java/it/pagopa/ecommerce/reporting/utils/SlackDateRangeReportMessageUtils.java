@@ -15,52 +15,66 @@ import java.util.logging.Logger;
  *      block elements reference</a>
  */
 public class SlackDateRangeReportMessageUtils {
-
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.ITALIAN);
-
     private static final String PAGOPA_LOGO_URL = "https://developer.pagopa.it/gitbook/docs/8phwN5u2QXllSKsqBjQU/.gitbook/assets/logo_asset.png";
+    private static final int MAX_BLOCKS_PER_MESSAGE = 50;
 
     /**
-     * Creates an aggregated weekly report message for Slack.
+     * Creates an aggregated weekly report message for Slack, split into multiple
+     * messages with a maximum blocks size each.
      *
      * @param aggregatedGroups List of aggregated status groups
      * @param startDate        Report start date
      * @param endDate          Report end date
      * @param logger           Logger instance
-     * @return Formatted Slack message in JSON format
+     * @return Array of formatted Slack messages in JSON format
      * @throws JsonProcessingException If JSON conversion fails
      */
-    public static String createAggregatedWeeklyReport(
-                                                      List<AggregatedStatusGroup> aggregatedGroups,
-                                                      LocalDate startDate,
-                                                      LocalDate endDate,
-                                                      Logger logger
+    public static String[] createAggregatedWeeklyReport(
+                                                        List<AggregatedStatusGroup> aggregatedGroups,
+                                                        LocalDate startDate,
+                                                        LocalDate endDate,
+                                                        Logger logger
     ) throws JsonProcessingException {
-
         List<AggregatedStatusGroup> sortedGroups = sortAggregatedGroups(aggregatedGroups);
         String formattedStartDate = formatDate(startDate);
         String formattedEndDate = formatDate(endDate);
 
-        Map<String, Object> message = new HashMap<>();
-        List<Map<String, Object>> blocks = new ArrayList<>();
+        List<Map<String, Object>> allBlocks = new ArrayList<>();
 
-        // Add header blocks
-        blocks.add(createHeaderBlock(formattedStartDate, formattedEndDate));
-        blocks.add(createImageBlock());
-        blocks.add(createHeaderDescriptionBlock(formattedStartDate, formattedEndDate));
-        blocks.add(createDivider());
+        // Add header blocks (these will be in the first message)
+        allBlocks.add(createHeaderBlock(formattedStartDate, formattedEndDate));
+        allBlocks.add(createImageBlock());
+        allBlocks.add(createHeaderDescriptionBlock(formattedStartDate, formattedEndDate));
+        allBlocks.add(createDivider());
 
         // Add sections for each aggregated group
         for (AggregatedStatusGroup group : sortedGroups) {
-            blocks.add(createGroupHeaderSection(group));
-            blocks.add(createStatusDetailsSection(group));
-            blocks.add(createDivider());
+            allBlocks.add(createGroupHeaderSection(group));
+            allBlocks.add(createStatusDetailsSection(group));
+            allBlocks.add(createDivider());
         }
 
-        message.put("blocks", blocks);
-        logger.info("slack message " + blocks.size() + " blocks created successfully");
-        return OBJECT_MAPPER.writeValueAsString(message);
+        // Split blocks into messages with max N blocks each
+        List<String> messages = new ArrayList<>();
+        int totalBlocks = allBlocks.size();
+        int messageCount = (int) Math.ceil((double) totalBlocks / MAX_BLOCKS_PER_MESSAGE);
+
+        for (int i = 0; i < messageCount; i++) {
+            int startIndex = i * MAX_BLOCKS_PER_MESSAGE;
+            int endIndex = Math.min(startIndex + MAX_BLOCKS_PER_MESSAGE, totalBlocks);
+
+            List<Map<String, Object>> messageBlocks = allBlocks.subList(startIndex, endIndex);
+
+            Map<String, Object> message = new HashMap<>();
+            message.put("blocks", messageBlocks);
+
+            messages.add(OBJECT_MAPPER.writeValueAsString(message));
+        }
+
+        logger.info("Created " + messages.size() + " slack messages with a total of " + totalBlocks + " blocks");
+        return messages.toArray(new String[0]);
     }
 
     /**
