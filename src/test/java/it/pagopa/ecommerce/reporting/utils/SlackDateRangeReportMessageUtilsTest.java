@@ -1,5 +1,7 @@
 package it.pagopa.ecommerce.reporting.utils;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -387,7 +389,7 @@ class SlackDateRangeReportMessageUtilsTest {
 
         // Verify each message has at most MAX_BLOCKS_PER_MESSAGE blocks
         for (String result : results) {
-            int blockCount = countOccurrences(result, "\"type\":");
+            int blockCount = countOccurrences(result);
             assertTrue(
                     blockCount <= 50,
                     "Each message should have at most 50 blocks, but found " + blockCount
@@ -395,24 +397,14 @@ class SlackDateRangeReportMessageUtilsTest {
         }
     }
 
-    // Helper method to count occurrences of a substring
+    // Helper method to count number of blocks
     private int countOccurrences(
-                                 String str,
-                                 String subStr
-    ) {
-        int count = 0;
-        int lastIndex = 0;
-
-        while (lastIndex != -1) {
-            lastIndex = str.indexOf(subStr, lastIndex);
-
-            if (lastIndex != -1) {
-                count++;
-                lastIndex += subStr.length();
-            }
-        }
-
-        return count;
+                                 String jsonStr
+    ) throws JsonProcessingException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        Map<String, Object> messageMap = objectMapper.readValue(jsonStr, Map.class);
+        List<Object> blocks = (List<Object>) messageMap.get("blocks");
+        return blocks.size();
     }
 
     @Test
@@ -555,7 +547,7 @@ class SlackDateRangeReportMessageUtilsTest {
 
         // Check that each message has at most 50 blocks
         for (String result : results) {
-            int blockCount = countOccurrences(result, "\"type\":");
+            int blockCount = countOccurrences(result);
             assertTrue(
                     blockCount <= 50,
                     "Each message should have at most 50 blocks, but found " + blockCount

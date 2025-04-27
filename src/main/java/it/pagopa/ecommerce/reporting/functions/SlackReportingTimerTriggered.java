@@ -68,7 +68,7 @@ public class SlackReportingTimerTriggered {
             // Add a small delay between messages to avoid rate limiting
             if (i < reportMessages.length - 1) {
                 try {
-                    Thread.sleep(1000); // 1-second delay
+                    sleep(1000); // 1-second delay
                 } catch (InterruptedException e) {
                     logger.warning("Sleep interrupted: " + e.getMessage());
                     Thread.currentThread().interrupt();
@@ -134,5 +134,9 @@ public class SlackReportingTimerTriggered {
      */
     protected SlackWebhookClient createSlackWebhookClient(String endpoint) {
         return new SlackWebhookClient(endpoint);
+    }
+
+    protected void sleep(long millis) throws InterruptedException {
+        Thread.sleep(millis);
     }
 }

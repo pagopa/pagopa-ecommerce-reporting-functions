@@ -99,7 +99,6 @@ class SlackReportingTimerTriggeredTest {
 
     @Test
     void shouldUseCorrectDateRangeForLastWeek() throws Exception {
-
         String timerInfo = "timer info";
         String mockEndpoint = "https://hooks.slack-mock.com/services/test/webhook";
 
@@ -140,7 +139,11 @@ class SlackReportingTimerTriggeredTest {
                                 any(),
                                 any()
                         )
-                ).thenReturn("Report");
+                ).thenReturn(
+                        new String[] {
+                                "Report"
+                        }
+                );
 
                 // Create testable instance
                 TestableSlackReportingTimerTriggered function = new TestableSlackReportingTimerTriggered(
@@ -171,7 +174,6 @@ class SlackReportingTimerTriggeredTest {
 
     @Test
     void shouldUseCorrectEndpointFromEnvironment() throws Exception {
-
         String timerInfo = "timer info";
         LocalDate fixedToday = LocalDate.of(2025, 4, 21);
         String mockEndpoint = "https://hooks.slack-mock.com/services/test/webhook";
@@ -190,7 +192,11 @@ class SlackReportingTimerTriggeredTest {
                             any(),
                             any()
                     )
-            ).thenReturn("Report");
+            ).thenReturn(
+                    new String[] {
+                            "Report"
+                    }
+            );
 
             // Create testable instance
             TestableSlackReportingTimerTriggered function = new TestableSlackReportingTimerTriggered(
@@ -209,7 +215,6 @@ class SlackReportingTimerTriggeredTest {
 
     @Test
     void shouldLogAppropriateMessages() throws Exception {
-
         String timerInfo = "timer info";
         LocalDate fixedToday = LocalDate.of(2025, 4, 21); // A Monday
         LocalDate expectedLastMonday = fixedToday.minusWeeks(1);
@@ -260,7 +265,11 @@ class SlackReportingTimerTriggeredTest {
                             any(Logger.class)
                     )
             )
-                    .thenReturn(mockReport);
+                    .thenReturn(
+                            new String[] {
+                                    mockReport
+                            }
+                    );
 
             // Create testable instance
             TestableSlackReportingTimerTriggered function = new TestableSlackReportingTimerTriggered(
@@ -343,7 +352,6 @@ class SlackReportingTimerTriggeredTest {
 
     @Test
     void shouldHandleExceptionFromSlackClient() throws Exception {
-
         String timerInfo = "timer info";
         LocalDate fixedToday = LocalDate.of(2025, 4, 21);
         String mockEndpoint = "https://hooks.slack-mock.com/services/test/webhook";
@@ -362,7 +370,11 @@ class SlackReportingTimerTriggeredTest {
                             any(),
                             any()
                     )
-            ).thenReturn("Report");
+            ).thenReturn(
+                    new String[] {
+                            "Report"
+                    }
+            );
 
             // Mock the webhook client to throw a RuntimeException instead of
             // JsonProcessingException
@@ -547,10 +559,7 @@ class SlackReportingTimerTriggeredTest {
         };
 
         try (MockedStatic<SlackDateRangeReportMessageUtils> mockedReportUtils = Mockito
-                .mockStatic(SlackDateRangeReportMessageUtils.class);
-                // Mock Thread.sleep to throw InterruptedException
-                MockedStatic<Thread> mockedThread = Mockito.mockStatic(Thread.class)) {
-
+                .mockStatic(SlackDateRangeReportMessageUtils.class)) {
             mockedReportUtils.when(
                     () -> SlackDateRangeReportMessageUtils.createAggregatedWeeklyReport(
                             any(),
@@ -560,17 +569,20 @@ class SlackReportingTimerTriggeredTest {
                     )
             ).thenReturn(mockReportMessages);
 
-            // Make Thread.sleep throw InterruptedException
-            mockedThread.when(() -> Thread.sleep(anyLong()))
-                    .thenThrow(new InterruptedException("Sleep interrupted"));
-
-            // Create testable instance
+            // Create a testable instance with a custom implementation that simulates
+            // an InterruptedException during sleep
             TestableSlackReportingTimerTriggered function = new TestableSlackReportingTimerTriggered(
                     mockEndpoint,
                     fixedToday,
                     mockAggregationService,
                     mockSlackWebhookClient
-            );
+            ) {
+                @Override
+                protected void sleep(long millis) throws InterruptedException {
+                    // Simulate InterruptedException on sleep
+                    throw new InterruptedException("Sleep interrupted");
+                }
+            };
 
             // When
             function.run(timerInfo, mockContext);
@@ -582,9 +594,6 @@ class SlackReportingTimerTriggeredTest {
 
             // Verify logging of the interruption
             verify(mockLogger).warning(contains("Sleep interrupted"));
-
-            // Verify the thread was interrupted
-            mockedThread.verify(() -> Thread.currentThread().interrupt());
         }
     }
 }
