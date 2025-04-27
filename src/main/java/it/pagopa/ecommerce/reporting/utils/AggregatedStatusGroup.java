@@ -47,4 +47,16 @@ public class AggregatedStatusGroup {
                 statusCounts
         );
     }
+
+    public void filterZeroCountStatuses() {
+        Map<String, Integer> filteredCounts = new HashMap<>();
+
+        for (Map.Entry<String, Integer> entry : statusCounts.entrySet()) {
+            if (entry.getValue() > 0) {
+                filteredCounts.put(entry.getKey(), entry.getValue());
+            }
+        }
+
+        this.statusCounts = filteredCounts;
+    }
 }
