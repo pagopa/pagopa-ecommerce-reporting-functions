@@ -18,7 +18,7 @@ public class SlackDateRangeReportMessageUtils {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.ITALIAN);
     private static final String PAGOPA_LOGO_URL = "https://developer.pagopa.it/gitbook/docs/8phwN5u2QXllSKsqBjQU/.gitbook/assets/logo_asset.png";
-    private static final int MAX_BLOCKS_PER_MESSAGE = 49;
+    private static final int MAX_BLOCKS_PER_MESSAGE = 40; // Reduced from 49 for safety
 
     /**
      * Creates an aggregated weekly report message for Slack, split into multiple
@@ -37,44 +37,127 @@ public class SlackDateRangeReportMessageUtils {
                                                         LocalDate endDate,
                                                         Logger logger
     ) throws JsonProcessingException {
+        if (aggregatedGroups == null || aggregatedGroups.isEmpty()) {
+            logger.info("No aggregated groups to report");
+            return new String[] {
+                    createEmptyReportMessage(startDate, endDate)
+            };
+        }
+
         List<AggregatedStatusGroup> sortedGroups = sortAggregatedGroups(aggregatedGroups);
         String formattedStartDate = formatDate(startDate);
         String formattedEndDate = formatDate(endDate);
 
-        List<Map<String, Object>> allBlocks = new ArrayList<>();
+        // First message with header
+        List<Map<String, Object>> firstMessageBlocks = new ArrayList<>();
+        firstMessageBlocks.add(createHeaderBlock(formattedStartDate, formattedEndDate));
+        firstMessageBlocks.add(createImageBlock());
+        firstMessageBlocks.add(createHeaderDescriptionBlock(formattedStartDate, formattedEndDate));
+        firstMessageBlocks.add(createDivider());
 
-        // Add header blocks (these will be in the first message)
-        allBlocks.add(createHeaderBlock(formattedStartDate, formattedEndDate));
-        allBlocks.add(createImageBlock());
-        allBlocks.add(createHeaderDescriptionBlock(formattedStartDate, formattedEndDate));
-        allBlocks.add(createDivider());
+        // Add some groups to first message if space allows
+        int groupsInFirstMessage = addGroupsToBlocks(
+                sortedGroups,
+                0,
+                MAX_BLOCKS_PER_MESSAGE - firstMessageBlocks.size(),
+                firstMessageBlocks
+        );
 
-        // Add sections for each aggregated group
-        for (AggregatedStatusGroup group : sortedGroups) {
-            allBlocks.add(createGroupHeaderSection(group));
-            allBlocks.add(createStatusDetailsSection(group));
-            allBlocks.add(createDivider());
-        }
-
-        // Split blocks into messages with max N blocks each
+        // Create first message
         List<String> messages = new ArrayList<>();
-        int totalBlocks = allBlocks.size();
-        int messageCount = (int) Math.ceil((double) totalBlocks / MAX_BLOCKS_PER_MESSAGE);
+        Map<String, Object> firstMessage = new HashMap<>();
+        firstMessage.put("blocks", firstMessageBlocks);
+        messages.add(OBJECT_MAPPER.writeValueAsString(firstMessage));
 
-        for (int i = 0; i < messageCount; i++) {
-            int startIndex = i * MAX_BLOCKS_PER_MESSAGE;
-            int endIndex = Math.min(startIndex + MAX_BLOCKS_PER_MESSAGE, totalBlocks);
+        // Create additional messages for remaining groups
+        int remainingGroups = sortedGroups.size() - groupsInFirstMessage;
+        if (remainingGroups > 0) {
+            int currentGroupIndex = groupsInFirstMessage;
 
-            List<Map<String, Object>> messageBlocks = allBlocks.subList(startIndex, endIndex);
+            while (currentGroupIndex < sortedGroups.size()) {
+                List<Map<String, Object>> messageBlocks = new ArrayList<>();
 
-            Map<String, Object> message = new HashMap<>();
-            message.put("blocks", messageBlocks);
+                // Add groups to this message
+                int groupsAdded = addGroupsToBlocks(
+                        sortedGroups,
+                        currentGroupIndex,
+                        MAX_BLOCKS_PER_MESSAGE,
+                        messageBlocks
+                );
 
-            messages.add(OBJECT_MAPPER.writeValueAsString(message));
+                // Create message
+                Map<String, Object> message = new HashMap<>();
+                message.put("blocks", messageBlocks);
+                messages.add(OBJECT_MAPPER.writeValueAsString(message));
+
+                currentGroupIndex += groupsAdded;
+            }
         }
 
-        logger.info("Created " + messages.size() + " slack messages with a total of " + totalBlocks + " blocks");
+        logger.info("Created " + messages.size() + " slack messages");
         return messages.toArray(new String[0]);
+    }
+
+    /**
+     * Creates an empty report message when no data is available.
+     */
+    private static String createEmptyReportMessage(
+                                                   LocalDate startDate,
+                                                   LocalDate endDate
+    )
+            throws JsonProcessingException {
+        String formattedStartDate = formatDate(startDate);
+        String formattedEndDate = formatDate(endDate);
+
+        List<Map<String, Object>> blocks = new ArrayList<>();
+        blocks.add(createHeaderBlock(formattedStartDate, formattedEndDate));
+        blocks.add(createImageBlock());
+        blocks.add(
+                createTextBlock(
+                        "section",
+                        "mrkdwn",
+                        "Non ci sono dati da visualizzare per il periodo selezionato.",
+                        false
+                )
+        );
+
+        Map<String, Object> message = new HashMap<>();
+        message.put("blocks", blocks);
+        return OBJECT_MAPPER.writeValueAsString(message);
+    }
+
+    /**
+     * Adds groups to a block list and returns the number of groups added.
+     */
+    private static int addGroupsToBlocks(
+                                         List<AggregatedStatusGroup> groups,
+                                         int startIndex,
+                                         int maxBlocksAvailable,
+                                         List<Map<String, Object>> blocks
+    ) {
+
+        int blocksPerGroup = 3; // Header + Details + Divider
+        int maxGroupsToAdd = maxBlocksAvailable / blocksPerGroup;
+        int groupsToAdd = Math.min(maxGroupsToAdd, groups.size() - startIndex);
+
+        for (int i = 0; i < groupsToAdd; i++) {
+            AggregatedStatusGroup group = groups.get(startIndex + i);
+
+            // Only add groups that have status counts
+            if (!group.getStatusCounts().isEmpty()) {
+                blocks.add(createGroupHeaderSection(group));
+
+                // Only add status details if there are any
+                String statusDetails = formatStatusDetails(group.getStatusCounts());
+                if (!statusDetails.trim().isEmpty()) {
+                    blocks.add(createStatusDetailsSection(group));
+                }
+
+                blocks.add(createDivider());
+            }
+        }
+
+        return groupsToAdd;
     }
 
     /**
@@ -111,11 +194,20 @@ public class SlackDateRangeReportMessageUtils {
      * @return Formatted status details string
      */
     static String formatStatusDetails(Map<String, Integer> statusCounts) {
+        if (statusCounts == null || statusCounts.isEmpty()) {
+            return "";
+        }
+
         StringBuilder statusDetails = new StringBuilder();
         List<String> sortedKeys = new ArrayList<>(statusCounts.keySet());
         Collections.sort(sortedKeys);
 
         for (String statusKey : sortedKeys) {
+            Integer count = statusCounts.get(statusKey);
+            if (count == null || count == 0) {
+                continue; // Skip zero counts
+            }
+
             SlackMessageConstants.TranslationEntry entry = SlackMessageConstants.STATUS_TRANSLATIONS.getOrDefault(
                     statusKey,
                     new SlackMessageConstants.TranslationEntry(statusKey, SlackMessageConstants.DEFAULT_STATUS_EMOJI)
@@ -126,7 +218,7 @@ public class SlackDateRangeReportMessageUtils {
                     .append(" *")
                     .append(entry.translation())
                     .append("*: ")
-                    .append(statusCounts.get(statusKey))
+                    .append(count)
                     .append("\n\n");
         }
 
@@ -140,6 +232,10 @@ public class SlackDateRangeReportMessageUtils {
      * @return Formatted payment type string
      */
     static String formatPaymentTypeCode(String paymentTypeCode) {
+        if (paymentTypeCode == null || paymentTypeCode.isEmpty()) {
+            paymentTypeCode = "GENERIC";
+        }
+
         SlackMessageConstants.TranslationEntry entry = SlackMessageConstants.PAYMENT_TYPE_CODE.getOrDefault(
                 paymentTypeCode,
                 new SlackMessageConstants.TranslationEntry(
@@ -170,7 +266,7 @@ public class SlackDateRangeReportMessageUtils {
                                                             String endDate
     ) {
         return createTextBlock(
-                "header",
+                "section",
                 "plain_text",
                 "Di seguito il report suddiviso per Client, PSP e metodo pagamento di pagamento per l'intervallo di tempo dal "
                         + startDate + " al " + endDate,
@@ -183,8 +279,6 @@ public class SlackDateRangeReportMessageUtils {
         imageBlock.put("type", "image");
         imageBlock.put("image_url", PAGOPA_LOGO_URL);
         imageBlock.put("alt_text", "PagoPA Logo");
-        imageBlock.put("image_width", 474);
-        imageBlock.put("image_height", 133);
         return imageBlock;
     }
 
@@ -195,19 +289,28 @@ public class SlackDateRangeReportMessageUtils {
     }
 
     static Map<String, Object> createGroupHeaderSection(AggregatedStatusGroup group) {
+        String clientId = group.getClientId() != null ? group.getClientId() : "Unknown";
+        String pspId = group.getPspId() != null ? group.getPspId() : "Unknown";
+        String paymentTypeCode = group.getPaymentTypeCode();
+
         String text = SlackMessageConstants.CHART_EMOJI + " STATISTICHE" +
-                "\n\t\t| Client *" + group.getClientId() +
-                "* con PSP *" + group.getPspId() +
-                "* e pagato con " + formatPaymentTypeCode(group.getPaymentTypeCode());
+                "\n\t\t| Client *" + clientId +
+                "* con PSP *" + pspId +
+                "* e pagato con " + formatPaymentTypeCode(paymentTypeCode);
 
         return createTextBlock("section", "mrkdwn", text, false);
     }
 
     static Map<String, Object> createStatusDetailsSection(AggregatedStatusGroup group) {
+        String details = formatStatusDetails(group.getStatusCounts());
+        if (details.trim().isEmpty()) {
+            details = "Nessun dettaglio disponibile.";
+        }
+
         return createTextBlock(
                 "section",
                 "mrkdwn",
-                formatStatusDetails(group.getStatusCounts()),
+                details,
                 false
         );
     }
@@ -219,6 +322,11 @@ public class SlackDateRangeReportMessageUtils {
                                                String content,
                                                boolean emoji
     ) {
+        // Don't create blocks with empty content
+        if (content == null || content.trim().isEmpty()) {
+            return null;
+        }
+
         Map<String, Object> block = new HashMap<>();
         block.put("type", blockType);
 

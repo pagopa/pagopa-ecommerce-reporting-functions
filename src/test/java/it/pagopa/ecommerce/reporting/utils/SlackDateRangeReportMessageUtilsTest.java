@@ -203,8 +203,6 @@ class SlackDateRangeReportMessageUtilsTest {
         assertEquals("image", result.get("type"));
         assertTrue(result.get("image_url").toString().contains("logo_asset.png"));
         assertEquals("PagoPA Logo", result.get("alt_text"));
-        assertEquals(474, result.get("image_width"));
-        assertEquals(133, result.get("image_height"));
     }
 
     @Test
