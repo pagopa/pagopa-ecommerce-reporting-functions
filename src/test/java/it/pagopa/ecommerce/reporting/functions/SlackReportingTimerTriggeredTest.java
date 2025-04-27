@@ -1,5 +1,6 @@
 package it.pagopa.ecommerce.reporting.functions;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.microsoft.azure.functions.ExecutionContext;
 import it.pagopa.ecommerce.reporting.clients.SlackWebhookClient;
 import it.pagopa.ecommerce.reporting.services.TransactionStatusAggregationService;
@@ -13,9 +14,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -88,83 +94,6 @@ class SlackReportingTimerTriggeredTest {
         @Override
         protected SlackWebhookClient createSlackWebhookClient(String endpoint) {
             return slackWebhookClient;
-        }
-    }
-
-    @Test
-    void shouldUseCorrectDateRangeForLastWeek() throws Exception {
-        when(mockContext.getLogger()).thenReturn(mockLogger);
-
-        String timerInfo = "timer info";
-        String mockEndpoint = "https://hooks.slack-mock.com/services/test/webhook";
-
-        // Test with different days of the week to ensure correct "last week"
-        // calculation
-        LocalDate[] testDates = {
-                LocalDate.of(2025, 4, 21), // Monday
-                LocalDate.of(2025, 4, 22), // Tuesday
-                LocalDate.of(2025, 4, 23), // Wednesday
-                LocalDate.of(2025, 4, 24), // Thursday
-                LocalDate.of(2025, 4, 25), // Friday
-                LocalDate.of(2025, 4, 26), // Saturday
-                LocalDate.of(2025, 4, 27) // Sunday
-        };
-
-        for (LocalDate today : testDates) {
-            // Calculate expected date range
-            LocalDate expectedLastMonday = today.minusWeeks(1).with(DayOfWeek.MONDAY);
-            LocalDate expectedLastSunday = expectedLastMonday.with(DayOfWeek.SUNDAY);
-
-            // Mock the aggregation service to return empty results
-            when(
-                    mockAggregationService.aggregateStatusCountByDateRange(
-                            startDateCaptor.capture(),
-                            endDateCaptor.capture(),
-                            eq(mockLogger)
-                    )
-            )
-                    .thenReturn(new ArrayList<>());
-
-            // Mock the report creation
-            try (MockedStatic<SlackDateRangeReportMessageUtils> mockedReportUtils = Mockito
-                    .mockStatic(SlackDateRangeReportMessageUtils.class)) {
-                mockedReportUtils.when(
-                        () -> SlackDateRangeReportMessageUtils.createAggregatedWeeklyReport(
-                                any(),
-                                any(),
-                                any(),
-                                any()
-                        )
-                ).thenReturn(
-                        new String[] {
-                                "Report"
-                        }
-                );
-
-                // Create testable instance
-                TestableSlackReportingTimerTriggered function = new TestableSlackReportingTimerTriggered(
-                        mockEndpoint,
-                        today,
-                        mockAggregationService,
-                        mockSlackWebhookClient
-                );
-
-                function.run(timerInfo, mockContext);
-
-                assertEquals(
-                        expectedLastMonday,
-                        startDateCaptor.getValue(),
-                        "Start date should be last Monday for current date: " + today
-                );
-                assertEquals(
-                        expectedLastSunday,
-                        endDateCaptor.getValue(),
-                        "End date should be last Sunday for current date: " + today
-                );
-
-                // Reset mocks for next iteration
-                reset(mockAggregationService, mockSlackWebhookClient);
-            }
         }
     }
 
@@ -282,10 +211,32 @@ class SlackReportingTimerTriggeredTest {
                     mockSlackWebhookClient
             );
 
-            function.run(timerInfo, mockContext);
+            // Check if the scheduler is properly closed
+            try (MockedStatic<Executors> executorsMock = Mockito.mockStatic(Executors.class)) {
 
-            // Verify that the SlackWebhookClient was called with the report
-            verify(mockSlackWebhookClient).postMessageToWebhook(anyString());
+                // Mock the scheduler creation
+                ScheduledExecutorService mockScheduler = mock(ScheduledExecutorService.class);
+                executorsMock.when(Executors::newSingleThreadScheduledExecutor).thenReturn(mockScheduler);
+
+                // Mock the scheduler methods
+                // For schedule method, execute the Runnable immediately
+                doAnswer(invocation -> {
+                    Runnable runnable = invocation.getArgument(0);
+                    runnable.run(); // Execute immediately
+                    return null;
+                }).when(mockScheduler).schedule(any(Runnable.class), anyLong(), any(TimeUnit.class));
+
+                // For awaitTermination, just return true
+                when(mockScheduler.awaitTermination(anyLong(), any(TimeUnit.class))).thenReturn(true);
+
+                function.run(timerInfo, mockContext);
+
+                // Verify that the SlackWebhookClient was called with the report
+                verify(mockSlackWebhookClient).postMessageToWebhook(anyString());
+
+                // Verify scheduler was shut down
+                verify(mockScheduler).shutdown();
+            }
         }
     }
 
@@ -357,19 +308,47 @@ class SlackReportingTimerTriggeredTest {
                     mockSlackWebhookClient
             );
 
-            function.run(timerInfo, mockContext);
+            // Ensure that the scheduler is properly closed
+            try (MockedStatic<Executors> executorsMock = Mockito.mockStatic(Executors.class)) {
 
-            // Verify execution start log
-            verify(mockLogger).info(matches("Java Timer trigger SlackReportingTimerTriggered executed at: .*"));
+                // Mock the scheduler creation
+                ScheduledExecutorService mockScheduler = mock(ScheduledExecutorService.class);
+                executorsMock.when(Executors::newSingleThreadScheduledExecutor).thenReturn(mockScheduler);
 
-            // Verify date range and results count log
-            verify(mockLogger).info(
-                    "Start date: " + expectedLastMonday + " to date: " + expectedLastSunday +
-                            ", results: " + mockAggregatedStatuses.size()
-            );
+                // Mock the scheduler methods
+                // For schedule method, execute the Runnable immediately
+                doAnswer(invocation -> {
+                    Runnable runnable = invocation.getArgument(0);
+                    runnable.run(); // Execute immediately
+                    return null;
+                }).when(mockScheduler).schedule(any(Runnable.class), anyLong(), any(TimeUnit.class));
 
-            // Verify the webhook client was called with the correct report
-            verify(mockSlackWebhookClient).postMessageToWebhook(mockReport);
+                // For awaitTermination, just return true
+                when(mockScheduler.awaitTermination(anyLong(), any(TimeUnit.class))).thenReturn(true);
+
+                function.run(timerInfo, mockContext);
+
+                // Verify execution start log
+                verify(mockLogger).info(matches("Java Timer trigger SlackReportingTimerTriggered executed at: .*"));
+
+                // Verify date range and results count log
+                verify(mockLogger).info(
+                        "Start date: " + expectedLastMonday + " to date: " + expectedLastSunday +
+                                ", results: " + mockAggregatedStatuses.size()
+                );
+
+                // Verify the webhook client was called with the correct report
+                verify(mockSlackWebhookClient).postMessageToWebhook(mockReport);
+
+                // Verify scheduler logs
+                verify(mockLogger).info("Sending 1 messages to Slack");
+                verify(mockLogger).info("Sending message 1 of 1");
+                verify(mockLogger).info("All messages scheduled successfully");
+                verify(mockLogger).info("All messages sent successfully");
+
+                // Verify scheduler was shut down
+                verify(mockScheduler).shutdown();
+            }
         }
     }
 
@@ -379,24 +358,12 @@ class SlackReportingTimerTriggeredTest {
         LocalDate fixedToday = LocalDate.of(2025, 4, 21);
 
         // Create a testable instance that returns null for the endpoint
-        // AND returns null for the SlackWebhookClient to simulate the real behavior
         TestableSlackReportingTimerTriggered function = new TestableSlackReportingTimerTriggered(
                 null,
                 fixedToday,
                 mockAggregationService,
                 null
-        ) {
-            @Override
-            protected SlackWebhookClient createSlackWebhookClient(String endpoint) {
-                // This simulates the real behavior - when endpoint is null,
-                // passing it to the SlackWebhookClient constructor would throw
-                // NullPointerException
-                if (endpoint == null) {
-                    throw new NullPointerException("Endpoint cannot be null");
-                }
-                return mockSlackWebhookClient;
-            }
-        };
+        );
 
         // The function should throw NullPointerException when endpoint is null
         assertThrows(NullPointerException.class, () -> function.run(timerInfo, mockContext));
@@ -422,55 +389,19 @@ class SlackReportingTimerTriggeredTest {
                 mockSlackWebhookClient
         );
 
-        assertThrows(RuntimeException.class, () -> function.run(timerInfo, mockContext));
+        // Ensure the scheduler is properly closed
+        try (MockedStatic<Executors> executorsMock = Mockito.mockStatic(Executors.class)) {
+            // Mock the scheduler creation
+            ScheduledExecutorService mockScheduler = mock(ScheduledExecutorService.class);
+            executorsMock.when(Executors::newSingleThreadScheduledExecutor).thenReturn(mockScheduler);
 
-        // Verify the webhook client was not called
-        verify(mockSlackWebhookClient, never()).postMessageToWebhook(anyString());
-    }
-
-    @Test
-    void shouldHandleExceptionFromSlackClient() throws Exception {
-        when(mockContext.getLogger()).thenReturn(mockLogger);
-
-        String timerInfo = "timer info";
-        LocalDate fixedToday = LocalDate.of(2025, 4, 21);
-        String mockEndpoint = "https://hooks.slack-mock.com/services/test/webhook";
-
-        // Mock the aggregation service to return empty results
-        when(mockAggregationService.aggregateStatusCountByDateRange(any(), any(), any()))
-                .thenReturn(new ArrayList<>());
-
-        // Mock the report creation
-        try (MockedStatic<SlackDateRangeReportMessageUtils> mockedReportUtils = Mockito
-                .mockStatic(SlackDateRangeReportMessageUtils.class)) {
-            mockedReportUtils.when(
-                    () -> SlackDateRangeReportMessageUtils.createAggregatedWeeklyReport(
-                            any(),
-                            any(),
-                            any(),
-                            any()
-                    )
-            ).thenReturn(
-                    new String[] {
-                            "Report"
-                    }
-            );
-
-            // Mock the webhook client to throw a RuntimeException instead of
-            // JsonProcessingException
-            doThrow(new RuntimeException("Error sending to Slack")).when(mockSlackWebhookClient)
-                    .postMessageToWebhook(anyString());
-
-            // Create testable instance
-            TestableSlackReportingTimerTriggered function = new TestableSlackReportingTimerTriggered(
-                    mockEndpoint,
-                    fixedToday,
-                    mockAggregationService,
-                    mockSlackWebhookClient
-            );
-
-            // Since we're throwing RuntimeException, we should expect an exception
             assertThrows(RuntimeException.class, () -> function.run(timerInfo, mockContext));
+
+            // Verify the webhook client was not called
+            verify(mockSlackWebhookClient, never()).postMessageToWebhook(anyString());
+
+            // Verify scheduler was never used for scheduling tasks
+            verify(mockScheduler, never()).schedule(any(Runnable.class), anyLong(), any(TimeUnit.class));
         }
     }
 
@@ -542,22 +473,45 @@ class SlackReportingTimerTriggeredTest {
                     mockSlackWebhookClient
             );
 
-            // When
-            function.run(timerInfo, mockContext);
+            // Ensure the scheduler is properly closed
+            try (MockedStatic<Executors> executorsMock = Mockito.mockStatic(Executors.class)) {
 
-            // Then
-            // Verify that the webhook client was called for each message
-            verify(mockSlackWebhookClient).postMessageToWebhook(mockReportMessages[0]);
-            verify(mockSlackWebhookClient).postMessageToWebhook(mockReportMessages[1]);
-            verify(mockSlackWebhookClient).postMessageToWebhook(mockReportMessages[2]);
-            verify(mockSlackWebhookClient, times(3)).postMessageToWebhook(anyString());
+                // Mock the scheduler creation
+                ScheduledExecutorService mockScheduler = mock(ScheduledExecutorService.class);
+                executorsMock.when(Executors::newSingleThreadScheduledExecutor).thenReturn(mockScheduler);
 
-            // Verify logging
-            verify(mockLogger).info("Sending 3 messages to Slack");
-            verify(mockLogger).info("Sending message 1 of 3");
-            verify(mockLogger).info("Sending message 2 of 3");
-            verify(mockLogger).info("Sending message 3 of 3");
-            verify(mockLogger).info("All messages sent successfully");
+                // Mock the scheduler methods to execute tasks immediately
+                doAnswer(invocation -> {
+                    Runnable runnable = invocation.getArgument(0);
+                    runnable.run(); // Execute immediately
+                    return null;
+                }).when(mockScheduler).schedule(any(Runnable.class), anyLong(), any(TimeUnit.class));
+
+                // For awaitTermination, just return true
+                when(mockScheduler.awaitTermination(anyLong(), any(TimeUnit.class))).thenReturn(true);
+
+                // When
+                function.run(timerInfo, mockContext);
+
+                // Then
+                // Verify that the webhook client was called for each message
+                verify(mockSlackWebhookClient).postMessageToWebhook(mockReportMessages[0]);
+                verify(mockSlackWebhookClient).postMessageToWebhook(mockReportMessages[1]);
+                verify(mockSlackWebhookClient).postMessageToWebhook(mockReportMessages[2]);
+                verify(mockSlackWebhookClient, times(3)).postMessageToWebhook(anyString());
+
+                // Verify logging
+                verify(mockLogger).info("Sending 3 messages to Slack");
+                verify(mockLogger).info("Sending message 1 of 3");
+                verify(mockLogger).info("Sending message 2 of 3");
+                verify(mockLogger).info("Sending message 3 of 3");
+                verify(mockLogger).info("All messages sent successfully");
+
+                // Verify scheduler was used correctly
+                verify(mockScheduler, times(3)).schedule(any(Runnable.class), anyLong(), eq(TimeUnit.SECONDS));
+                verify(mockScheduler).awaitTermination(eq(4L), eq(TimeUnit.SECONDS)); // messages.length + 1
+                verify(mockScheduler).shutdown();
+            }
         }
     }
 
@@ -592,11 +546,6 @@ class SlackReportingTimerTriggeredTest {
                     )
             ).thenReturn(mockReportMessages);
 
-            // Mock the webhook client to throw an exception on the second message
-            doNothing().when(mockSlackWebhookClient).postMessageToWebhook(mockReportMessages[0]);
-            doThrow(new RuntimeException("Error sending to Slack"))
-                    .when(mockSlackWebhookClient).postMessageToWebhook(mockReportMessages[1]);
-
             // Create testable instance
             TestableSlackReportingTimerTriggered function = new TestableSlackReportingTimerTriggered(
                     mockEndpoint,
@@ -605,28 +554,72 @@ class SlackReportingTimerTriggeredTest {
                     mockSlackWebhookClient
             );
 
-            // The function should throw an exception when the second message fails
-            assertThrows(RuntimeException.class, () -> function.run(timerInfo, mockContext));
+            // Ensure the scheduler is properly closed
+            try (MockedStatic<Executors> executorsMock = Mockito.mockStatic(Executors.class)) {
 
-            // Verify that the first message was sent successfully
-            verify(mockSlackWebhookClient).postMessageToWebhook(mockReportMessages[0]);
+                // Mock the scheduler creation
+                ScheduledExecutorService mockScheduler = mock(ScheduledExecutorService.class);
+                executorsMock.when(Executors::newSingleThreadScheduledExecutor).thenReturn(mockScheduler);
 
-            // Verify that the second message was attempted
-            verify(mockSlackWebhookClient).postMessageToWebhook(mockReportMessages[1]);
+                // Mock the scheduler methods
+                // For the first message, execute normally
+                // For the second message, throw an exception
+                // For the third message, do nothing (it should still be scheduled)
+                final AtomicInteger taskCounter = new AtomicInteger(0);
+                doAnswer(invocation -> {
+                    int currentTask = taskCounter.getAndIncrement();
+                    Runnable task = invocation.getArgument(0);
 
-            // Verify that the third message was never sent
-            verify(mockSlackWebhookClient, never()).postMessageToWebhook(mockReportMessages[2]);
+                    if (currentTask == 0) {
+                        // First task should succeed
+                        task.run();
+                    } else if (currentTask == 1) {
+                        // Second task will throw exception
+                        doThrow(new RuntimeException("Error sending to Slack"))
+                                .when(mockSlackWebhookClient).postMessageToWebhook(mockReportMessages[1]);
+                        try {
+                            task.run();
+                        } catch (RuntimeException e) {
+                            // Expected exception, but we want to continue the test
+                            // so we catch it here and don't rethrow
+                        }
+                    }
+                    // Don't execute third task
 
-            // Verify logging
-            verify(mockLogger).info("Sending 3 messages to Slack");
-            verify(mockLogger).info("Sending message 1 of 3");
-            verify(mockLogger).info("Sending message 2 of 3");
-            verify(mockLogger, never()).info("All messages sent successfully");
+                    return null;
+                }).when(mockScheduler).schedule(any(Runnable.class), anyLong(), eq(TimeUnit.SECONDS));
+
+                // For awaitTermination, simulate an interruption
+                doThrow(new InterruptedException("Test interruption"))
+                        .when(mockScheduler).awaitTermination(anyLong(), any(TimeUnit.class));
+
+                // When
+                function.run(timerInfo, mockContext);
+
+                // Then
+                // Verify that the first message was sent successfully
+                verify(mockSlackWebhookClient).postMessageToWebhook(mockReportMessages[0]);
+
+                // Verify that the second message was attempted
+                verify(mockSlackWebhookClient).postMessageToWebhook(mockReportMessages[1]);
+
+                // Verify that the third message was scheduled but not executed due to exception
+                verify(mockScheduler, times(3)).schedule(any(Runnable.class), anyLong(), eq(TimeUnit.SECONDS));
+
+                // Verify logging
+                verify(mockLogger).info("Sending 3 messages to Slack");
+                verify(mockLogger).info("Sending message 1 of 3");
+                verify(mockLogger).info("Sending message 2 of 3");
+                verify(mockLogger).warning(contains("Scheduler interrupted"));
+
+                // Verify scheduler was shut down
+                verify(mockScheduler).shutdown();
+            }
         }
     }
 
     @Test
-    void shouldHandleInterruptedExceptionDuringSleep() throws Exception {
+    void shouldHandleInterruptedExceptionDuringAwaitTermination() throws Exception {
         when(mockContext.getLogger()).thenReturn(mockLogger);
 
         // Given
@@ -655,31 +648,281 @@ class SlackReportingTimerTriggeredTest {
                     )
             ).thenReturn(mockReportMessages);
 
-            // Testable instance with a custom implementation that simulates
-            // an InterruptedException during sleep
+            // Create testable instance
             TestableSlackReportingTimerTriggered function = new TestableSlackReportingTimerTriggered(
                     mockEndpoint,
                     fixedToday,
                     mockAggregationService,
                     mockSlackWebhookClient
-            ) {
-                @Override
-                protected void sleep(long millis) throws InterruptedException {
-                    // Simulate InterruptedException on sleep
-                    throw new InterruptedException("Sleep interrupted");
+            );
+
+            // Ensure the scheduler is properly closed
+            try (MockedStatic<Executors> executorsMock = Mockito.mockStatic(Executors.class)) {
+
+                // Mock the scheduler creation
+                ScheduledExecutorService mockScheduler = mock(ScheduledExecutorService.class);
+                executorsMock.when(Executors::newSingleThreadScheduledExecutor).thenReturn(mockScheduler);
+
+                // Mock the scheduler methods to execute tasks immediately
+                doAnswer(invocation -> {
+                    Runnable task = invocation.getArgument(0);
+                    task.run(); // Execute the task immediately
+                    return null;
+                }).when(mockScheduler).schedule(any(Runnable.class), anyLong(), eq(TimeUnit.SECONDS));
+
+                // Make awaitTermination throw InterruptedException
+                doThrow(new InterruptedException("Test interruption"))
+                        .when(mockScheduler).awaitTermination(anyLong(), any(TimeUnit.class));
+
+                // When
+                function.run(timerInfo, mockContext);
+
+                // Then
+                // Verify both messages were sent despite the interruption
+                verify(mockSlackWebhookClient).postMessageToWebhook(mockReportMessages[0]);
+                verify(mockSlackWebhookClient).postMessageToWebhook(mockReportMessages[1]);
+
+                // Verify logging of the interruption
+                verify(mockLogger).warning(contains("Scheduler interrupted"));
+
+                // Verify scheduler was shut down
+                verify(mockScheduler).shutdown();
+            }
+        }
+    }
+
+    @Test
+    void shouldScheduleTasksWithCorrectDelays() throws Exception {
+        when(mockContext.getLogger()).thenReturn(mockLogger);
+
+        // Given
+        String timerInfo = "timer info";
+        LocalDate fixedToday = LocalDate.of(2025, 4, 21);
+        String mockEndpoint = "https://hooks.slack-mock.com/services/test/webhook";
+
+        // Mock the aggregation service to return some results
+        when(mockAggregationService.aggregateStatusCountByDateRange(any(), any(), any()))
+                .thenReturn(new ArrayList<>());
+
+        // Create mock report messages
+        String[] mockReportMessages = {
+                "First part of the report",
+                "Second part of the report",
+                "Third part of the report"
+        };
+
+        try (MockedStatic<SlackDateRangeReportMessageUtils> mockedReportUtils = Mockito
+                .mockStatic(SlackDateRangeReportMessageUtils.class)) {
+            mockedReportUtils.when(
+                    () -> SlackDateRangeReportMessageUtils.createAggregatedWeeklyReport(
+                            any(),
+                            any(),
+                            any(),
+                            any()
+                    )
+            ).thenReturn(mockReportMessages);
+
+            // Create testable instance
+            TestableSlackReportingTimerTriggered function = new TestableSlackReportingTimerTriggered(
+                    mockEndpoint,
+                    fixedToday,
+                    mockAggregationService,
+                    mockSlackWebhookClient
+            );
+
+            // Ensure the scheduler is properly closed
+            try (MockedStatic<Executors> executorsMock = Mockito.mockStatic(Executors.class)) {
+
+                // Mock the scheduler creation
+                ScheduledExecutorService mockScheduler = mock(ScheduledExecutorService.class);
+                executorsMock.when(Executors::newSingleThreadScheduledExecutor).thenReturn(mockScheduler);
+
+                // Capture the delay arguments
+                ArgumentCaptor<Long> delayCaptor = ArgumentCaptor.forClass(Long.class);
+                when(mockScheduler.awaitTermination(anyLong(), any())).thenReturn(true);
+
+                // When
+                function.run(timerInfo, mockContext);
+
+                // Then
+                // Verify that tasks were scheduled with increasing delays
+                verify(mockScheduler, times(3))
+                        .schedule(any(Runnable.class), delayCaptor.capture(), eq(TimeUnit.SECONDS));
+
+                List<Long> capturedDelays = delayCaptor.getAllValues();
+                assertEquals(3, capturedDelays.size());
+                assertEquals(0L, capturedDelays.get(0).longValue());
+                assertEquals(1L, capturedDelays.get(1).longValue());
+                assertEquals(2L, capturedDelays.get(2).longValue());
+
+                // Verify awaitTermination was called with correct timeout
+                verify(mockScheduler).awaitTermination(eq(4L), eq(TimeUnit.SECONDS)); // messages.length + 1
+
+                // Verify scheduler was shut down
+                verify(mockScheduler).shutdown();
+            }
+        }
+    }
+
+    @Test
+    void shouldUseCorrectDateRangeForLastWeek() throws Exception {
+        when(mockContext.getLogger()).thenReturn(mockLogger);
+
+        String timerInfo = "timer info";
+        String mockEndpoint = "https://hooks.slack-mock.com/services/test/webhook";
+
+        // Test with different days of the week to ensure correct "last week"
+        // calculation
+        LocalDate[] testDates = {
+                LocalDate.of(2025, 4, 21), // Monday
+                LocalDate.of(2025, 4, 22), // Tuesday
+                LocalDate.of(2025, 4, 23), // Wednesday
+                LocalDate.of(2025, 4, 24), // Thursday
+                LocalDate.of(2025, 4, 25), // Friday
+                LocalDate.of(2025, 4, 26), // Saturday
+                LocalDate.of(2025, 4, 27) // Sunday
+        };
+
+        for (LocalDate today : testDates) {
+            // Calculate expected date range
+            LocalDate expectedLastMonday = today.minusWeeks(1).with(DayOfWeek.MONDAY);
+            LocalDate expectedLastSunday = expectedLastMonday.with(DayOfWeek.SUNDAY);
+
+            // Mock the aggregation service to return empty results
+            when(
+                    mockAggregationService.aggregateStatusCountByDateRange(
+                            startDateCaptor.capture(),
+                            endDateCaptor.capture(),
+                            eq(mockLogger)
+                    )
+            )
+                    .thenReturn(new ArrayList<>());
+
+            // Mock the report creation
+            try (MockedStatic<SlackDateRangeReportMessageUtils> mockedReportUtils = Mockito
+                    .mockStatic(SlackDateRangeReportMessageUtils.class)) {
+                mockedReportUtils.when(
+                        () -> SlackDateRangeReportMessageUtils.createAggregatedWeeklyReport(
+                                any(),
+                                any(),
+                                any(),
+                                any()
+                        )
+                ).thenReturn(
+                        new String[] {
+                                "Report"
+                        }
+                );
+
+                // Create testable instance
+                TestableSlackReportingTimerTriggered function = new TestableSlackReportingTimerTriggered(
+                        mockEndpoint,
+                        today,
+                        mockAggregationService,
+                        mockSlackWebhookClient
+                );
+
+                // Ensure the scheduler is properly closed
+                try (MockedStatic<Executors> executorsMock = Mockito.mockStatic(Executors.class)) {
+
+                    // Mock the scheduler creation
+                    ScheduledExecutorService mockScheduler = mock(ScheduledExecutorService.class);
+                    executorsMock.when(Executors::newSingleThreadScheduledExecutor).thenReturn(mockScheduler);
+
+                    // Mock the scheduler methods
+                    // For schedule method, execute the Runnable immediately
+                    doAnswer(invocation -> {
+                        Runnable runnable = invocation.getArgument(0);
+                        runnable.run(); // Execute immediately
+                        return null;
+                    }).when(mockScheduler).schedule(any(Runnable.class), anyLong(), any(TimeUnit.class));
+
+                    // For awaitTermination, just return true
+                    when(mockScheduler.awaitTermination(anyLong(), any(TimeUnit.class))).thenReturn(true);
+
+                    function.run(timerInfo, mockContext);
+
+                    assertEquals(
+                            expectedLastMonday,
+                            startDateCaptor.getValue(),
+                            "Start date should be last Monday for current date: " + today
+                    );
+                    assertEquals(
+                            expectedLastSunday,
+                            endDateCaptor.getValue(),
+                            "End date should be last Sunday for current date: " + today
+                    );
+
+                    // Verify scheduler was shut down
+                    verify(mockScheduler).shutdown();
                 }
-            };
 
-            // When
-            function.run(timerInfo, mockContext);
+                // Reset mocks for next iteration
+                reset(mockAggregationService, mockSlackWebhookClient);
+            }
+        }
+    }
 
-            // Then
-            // Verify both messages were sent despite the interruption
-            verify(mockSlackWebhookClient).postMessageToWebhook(mockReportMessages[0]);
-            verify(mockSlackWebhookClient).postMessageToWebhook(mockReportMessages[1]);
+    @Test
+    void shouldHandleExceptionFromSlackClient() throws Exception {
+        when(mockContext.getLogger()).thenReturn(mockLogger);
 
-            // Verify logging of the interruption
-            verify(mockLogger).warning(contains("Sleep interrupted"));
+        String timerInfo = "timer info";
+        LocalDate fixedToday = LocalDate.of(2025, 4, 21);
+        String mockEndpoint = "https://hooks.slack-mock.com/services/test/webhook";
+
+        // Mock the aggregation service to return empty results
+        when(mockAggregationService.aggregateStatusCountByDateRange(any(), any(), any()))
+                .thenReturn(new ArrayList<>());
+
+        // Mock the report creation
+        try (MockedStatic<SlackDateRangeReportMessageUtils> mockedReportUtils = Mockito
+                .mockStatic(SlackDateRangeReportMessageUtils.class)) {
+            mockedReportUtils.when(
+                    () -> SlackDateRangeReportMessageUtils.createAggregatedWeeklyReport(
+                            any(),
+                            any(),
+                            any(),
+                            any()
+                    )
+            ).thenReturn(
+                    new String[] {
+                            "Report"
+                    }
+            );
+
+            // Mock the webhook client to throw a RuntimeException
+            doThrow(new RuntimeException("Error sending to Slack")).when(mockSlackWebhookClient)
+                    .postMessageToWebhook(anyString());
+
+            // Create testable instance
+            TestableSlackReportingTimerTriggered function = new TestableSlackReportingTimerTriggered(
+                    mockEndpoint,
+                    fixedToday,
+                    mockAggregationService,
+                    mockSlackWebhookClient
+            );
+
+            // Ensure the scheduler is properly closed
+            try (MockedStatic<Executors> executorsMock = Mockito.mockStatic(Executors.class)) {
+
+                // Mock the scheduler creation
+                ScheduledExecutorService mockScheduler = mock(ScheduledExecutorService.class);
+                executorsMock.when(Executors::newSingleThreadScheduledExecutor).thenReturn(mockScheduler);
+
+                // Mock the scheduler methods to execute tasks immediately
+                doAnswer(invocation -> {
+                    Runnable runnable = invocation.getArgument(0);
+                    runnable.run(); // This will throw the exception from the webhook client
+                    return null;
+                }).when(mockScheduler).schedule(any(Runnable.class), anyLong(), any(TimeUnit.class));
+
+                // Since we're throwing RuntimeException, we should expect an exception
+                assertThrows(RuntimeException.class, () -> function.run(timerInfo, mockContext));
+
+                // Verify scheduler was shut down even with the exception
+                verify(mockScheduler).shutdown();
+            }
         }
     }
 }

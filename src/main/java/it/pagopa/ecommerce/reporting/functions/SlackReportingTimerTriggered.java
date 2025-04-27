@@ -11,6 +11,9 @@ import it.pagopa.ecommerce.reporting.utils.SlackDateRangeReportMessageUtils;
 
 import java.time.*;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 /**
@@ -61,19 +64,24 @@ public class SlackReportingTimerTriggered {
 
         // Send each message to Slack
         logger.info("Sending " + reportMessages.length + " messages to Slack");
-        for (int i = 0; i < reportMessages.length; i++) {
-            logger.info("Sending message " + (i + 1) + " of " + reportMessages.length);
-            slackWebhookClient.postMessageToWebhook(reportMessages[i]);
-
-            // Add a small delay between messages to avoid rate limiting
-            if (i < reportMessages.length - 1) {
-                try {
-                    sleep(1000); // 1-second delay
-                } catch (InterruptedException e) {
-                    logger.warning("Sleep interrupted: " + e.getMessage());
-                    Thread.currentThread().interrupt();
-                }
+        ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+        try {
+            for (int i = 0; i < reportMessages.length; i++) {
+                final int messageIndex = i;
+                scheduler.schedule(() -> {
+                    logger.info("Sending message " + (messageIndex + 1) + " of " + reportMessages.length);
+                    slackWebhookClient.postMessageToWebhook(reportMessages[messageIndex]);
+                }, i, TimeUnit.SECONDS); // Schedule each message i seconds from now
             }
+            logger.info("All messages scheduled successfully");
+
+            // Wait for all tasks to complete
+            scheduler.awaitTermination(reportMessages.length + 1, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            logger.warning("Scheduler interrupted: " + e.getMessage());
+            Thread.currentThread().interrupt();
+        } finally {
+            scheduler.shutdown();
         }
 
         logger.info("All messages sent successfully");
@@ -134,9 +142,5 @@ public class SlackReportingTimerTriggered {
      */
     protected SlackWebhookClient createSlackWebhookClient(String endpoint) {
         return new SlackWebhookClient(endpoint);
-    }
-
-    protected void sleep(long millis) throws InterruptedException {
-        Thread.sleep(millis);
     }
 }
