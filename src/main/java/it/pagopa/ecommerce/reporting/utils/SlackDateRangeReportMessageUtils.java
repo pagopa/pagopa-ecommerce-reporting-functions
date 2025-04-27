@@ -18,7 +18,7 @@ public class SlackDateRangeReportMessageUtils {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.ITALIAN);
     private static final String PAGOPA_LOGO_URL = "https://developer.pagopa.it/gitbook/docs/8phwN5u2QXllSKsqBjQU/.gitbook/assets/logo_asset.png";
-    private static final int MAX_BLOCKS_PER_MESSAGE = 50;
+    private static final int MAX_BLOCKS_PER_MESSAGE = 49;
 
     /**
      * Creates an aggregated weekly report message for Slack, split into multiple

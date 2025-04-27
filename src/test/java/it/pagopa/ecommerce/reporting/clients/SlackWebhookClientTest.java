@@ -164,7 +164,7 @@ class SlackWebhookClientTest {
         slackWebhookClient.postRawJsonToWebhook(validJson);
 
         verify(httpClientMock).execute(any(HttpPost.class));
-        verify(loggerMock).info("Error response from Slack: invalid_payload");
+        verify(loggerMock).info("Error response from Slack: invalid_payload, " + validJson);
     }
 
     @Test
