@@ -76,7 +76,7 @@ public class SlackReportingTimerTriggered {
             logger.info("All messages scheduled successfully");
 
             // Wait for all tasks to complete
-            scheduler.awaitTermination(reportMessages.length + 1, TimeUnit.SECONDS);
+            scheduler.awaitTermination((long) reportMessages.length + 1, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             logger.warning("Scheduler interrupted: " + e.getMessage());
             Thread.currentThread().interrupt();
