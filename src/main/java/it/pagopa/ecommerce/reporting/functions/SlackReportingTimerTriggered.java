@@ -79,9 +79,9 @@ public class SlackReportingTimerTriggered {
         logger.info("All messages sent successfully");
     }
 
-    private LocalDate getDateFromString(
-                                        String dateFormat,
-                                        LocalDate defaultDate
+    protected LocalDate getDateFromString(
+                                          String dateFormat,
+                                          LocalDate defaultDate
     ) {
         try {
             String[] dateComponents = dateFormat.split("-");

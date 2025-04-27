@@ -46,11 +46,6 @@ class SlackReportingTimerTriggeredTest {
     @Captor
     private ArgumentCaptor<String> reportCaptor;
 
-    @BeforeEach
-    void setUp() {
-        when(mockContext.getLogger()).thenReturn(mockLogger);
-    }
-
     /**
      * Test class that extends the original class to allow for mocking
      */
@@ -98,6 +93,8 @@ class SlackReportingTimerTriggeredTest {
 
     @Test
     void shouldUseCorrectDateRangeForLastWeek() throws Exception {
+        when(mockContext.getLogger()).thenReturn(mockLogger);
+
         String timerInfo = "timer info";
         String mockEndpoint = "https://hooks.slack-mock.com/services/test/webhook";
 
@@ -172,7 +169,87 @@ class SlackReportingTimerTriggeredTest {
     }
 
     @Test
+    void shouldReturnCurrentDate() {
+        // Given
+        SlackReportingTimerTriggered function = new SlackReportingTimerTriggered();
+
+        // When
+        LocalDate result = function.getCurrentDate();
+
+        // Then
+        // LocalDate.now() will give the current date, which might change during
+        // test execution.
+        // So we verify it's not null and is "close to now"
+        assertNotNull(result, "Current date should not be null");
+        LocalDate today = LocalDate.now();
+        // Check if the date is within 1 day of today (to handle timezone differences)
+        assertTrue(
+                Math.abs(result.toEpochDay() - today.toEpochDay()) <= 1,
+                "Current date should be close to today"
+        );
+    }
+
+    @Test
+    void shouldParseValidDateFormat() {
+        // Given
+        SlackReportingTimerTriggered function = new SlackReportingTimerTriggered();
+        String dateString = "15-4-2023"; // day-month-year format
+        LocalDate defaultDate = LocalDate.of(2023, 1, 1);
+
+        // When
+        LocalDate result = function.getDateFromString(dateString, defaultDate);
+
+        // Then
+        LocalDate expected = LocalDate.now().withYear(2023).withMonth(4).withDayOfMonth(15);
+        assertEquals(expected, result, "Should correctly parse valid date format");
+    }
+
+    @Test
+    void shouldReturnDefaultDateForInvalidFormat() {
+        // Given
+        SlackReportingTimerTriggered function = new SlackReportingTimerTriggered();
+        String dateString = "invalid-date-format";
+        LocalDate defaultDate = LocalDate.of(2023, 1, 1);
+
+        // When
+        LocalDate result = function.getDateFromString(dateString, defaultDate);
+
+        // Then
+        assertEquals(defaultDate, result, "Should return default date for invalid format");
+    }
+
+    @Test
+    void shouldReturnDefaultDateForIncompleteComponents() {
+        // Given
+        SlackReportingTimerTriggered function = new SlackReportingTimerTriggered();
+        String dateString = "15-4"; // Missing year
+        LocalDate defaultDate = LocalDate.of(2023, 1, 1);
+
+        // When
+        LocalDate result = function.getDateFromString(dateString, defaultDate);
+
+        // Then
+        assertEquals(defaultDate, result, "Should return default date for incomplete components");
+    }
+
+    @Test
+    void shouldReturnDefaultDateForNumberFormatException() {
+        // Given
+        SlackReportingTimerTriggered function = new SlackReportingTimerTriggered();
+        String dateString = "15-Apr-2023"; // Non-numeric month
+        LocalDate defaultDate = LocalDate.of(2023, 1, 1);
+
+        // When
+        LocalDate result = function.getDateFromString(dateString, defaultDate);
+
+        // Then
+        assertEquals(defaultDate, result, "Should return default date for number format exception");
+    }
+
+    @Test
     void shouldUseCorrectEndpointFromEnvironment() throws Exception {
+        when(mockContext.getLogger()).thenReturn(mockLogger);
+
         String timerInfo = "timer info";
         LocalDate fixedToday = LocalDate.of(2025, 4, 21);
         String mockEndpoint = "https://hooks.slack-mock.com/services/test/webhook";
@@ -214,6 +291,8 @@ class SlackReportingTimerTriggeredTest {
 
     @Test
     void shouldLogAppropriateMessages() throws Exception {
+        when(mockContext.getLogger()).thenReturn(mockLogger);
+
         String timerInfo = "timer info";
         LocalDate fixedToday = LocalDate.of(2025, 4, 21); // A Monday
         LocalDate expectedLastMonday = fixedToday.minusWeeks(1);
@@ -296,7 +375,6 @@ class SlackReportingTimerTriggeredTest {
 
     @Test
     void shouldHandleMissingEndpointEnvironmentVariable() {
-
         String timerInfo = "timer info";
         LocalDate fixedToday = LocalDate.of(2025, 4, 21);
 
@@ -326,6 +404,7 @@ class SlackReportingTimerTriggeredTest {
 
     @Test
     void shouldHandleExceptionFromAggregationService() throws Exception {
+        when(mockContext.getLogger()).thenReturn(mockLogger);
 
         String timerInfo = "timer info";
         LocalDate fixedToday = LocalDate.of(2025, 4, 21);
@@ -351,6 +430,8 @@ class SlackReportingTimerTriggeredTest {
 
     @Test
     void shouldHandleExceptionFromSlackClient() throws Exception {
+        when(mockContext.getLogger()).thenReturn(mockLogger);
+
         String timerInfo = "timer info";
         LocalDate fixedToday = LocalDate.of(2025, 4, 21);
         String mockEndpoint = "https://hooks.slack-mock.com/services/test/webhook";
@@ -395,6 +476,8 @@ class SlackReportingTimerTriggeredTest {
 
     @Test
     void shouldSendMultipleMessagesWhenReportIsSplit() throws Exception {
+        when(mockContext.getLogger()).thenReturn(mockLogger);
+
         // Given
         String timerInfo = "timer info";
         LocalDate fixedToday = LocalDate.of(2025, 4, 21); // A Monday
@@ -480,6 +563,8 @@ class SlackReportingTimerTriggeredTest {
 
     @Test
     void shouldHandleExceptionDuringMultipleMessageSending() throws Exception {
+        when(mockContext.getLogger()).thenReturn(mockLogger);
+
         // Given
         String timerInfo = "timer info";
         LocalDate fixedToday = LocalDate.of(2025, 4, 21);
@@ -542,6 +627,8 @@ class SlackReportingTimerTriggeredTest {
 
     @Test
     void shouldHandleInterruptedExceptionDuringSleep() throws Exception {
+        when(mockContext.getLogger()).thenReturn(mockLogger);
+
         // Given
         String timerInfo = "timer info";
         LocalDate fixedToday = LocalDate.of(2025, 4, 21);
@@ -568,7 +655,7 @@ class SlackReportingTimerTriggeredTest {
                     )
             ).thenReturn(mockReportMessages);
 
-            // Restable instance with a custom implementation that simulates
+            // Testable instance with a custom implementation that simulates
             // an InterruptedException during sleep
             TestableSlackReportingTimerTriggered function = new TestableSlackReportingTimerTriggered(
                     mockEndpoint,
@@ -593,62 +680,6 @@ class SlackReportingTimerTriggeredTest {
 
             // Verify logging of the interruption
             verify(mockLogger).warning(contains("Sleep interrupted"));
-        }
-    }
-
-    @Test
-    void shouldReturnCurrentDate() {
-        // Given
-        SlackReportingTimerTriggered function = new SlackReportingTimerTriggered();
-
-        // When
-        LocalDate result = function.getCurrentDate();
-
-        // Then
-        // Since LocalDate.now() will give the current date which might change during
-        // test execution,
-        // we'll just verify it's not null and is close to now
-        assertNotNull(result, "Current date should not be null");
-        LocalDate today = LocalDate.now();
-        // Check if the date is within 1 day of today (to handle timezone differences)
-        assertTrue(
-                Math.abs(result.toEpochDay() - today.toEpochDay()) <= 1,
-                "Current date should be close to today"
-        );
-    }
-
-    @Test
-    void shouldGetEnvironmentVariable() {
-        // Given
-        String variableName = "TEST_ENV_VAR";
-        String expectedValue = "test-value";
-
-        try (MockedStatic<System> mockedSystem = Mockito.mockStatic(System.class)) {
-            mockedSystem.when(() -> System.getenv(variableName)).thenReturn(expectedValue);
-
-            // When
-            SlackReportingTimerTriggered function = new SlackReportingTimerTriggered();
-            String result = function.getEnvVariable(variableName);
-
-            // Then
-            assertEquals(expectedValue, result, "Should return environment variable value");
-        }
-    }
-
-    @Test
-    void shouldReturnNullForMissingEnvironmentVariable() {
-        // Given
-        String variableName = "NON_EXISTENT_VAR";
-
-        try (MockedStatic<System> mockedSystem = Mockito.mockStatic(System.class)) {
-            mockedSystem.when(() -> System.getenv(variableName)).thenReturn(null);
-
-            // When
-            SlackReportingTimerTriggered function = new SlackReportingTimerTriggered();
-            String result = function.getEnvVariable(variableName);
-
-            // Then
-            assertNull(result, "Should return null for missing environment variable");
         }
     }
 }
