@@ -116,6 +116,11 @@ public class TransactionStatusAggregationService {
 
         List<AggregatedStatusGroup> aggregated = new ArrayList<>(aggregatedMap.values());
 
+        // Filter out statuses with count 0 from each AggregatedStatusGroup
+        for (AggregatedStatusGroup group : aggregated) {
+            group.filterZeroCountStatuses();
+        }
+
         logger.info("[aggregateStatusCountByDateRange] Aggregation transaction status completed.");
         return aggregated;
     }
