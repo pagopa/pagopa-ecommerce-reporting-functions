@@ -213,29 +213,22 @@ class SlackReportingTimerTriggeredTest {
 
             // Check if the scheduler is properly closed
             try (MockedStatic<Executors> executorsMock = Mockito.mockStatic(Executors.class)) {
-
                 // Mock the scheduler creation
                 ScheduledExecutorService mockScheduler = mock(ScheduledExecutorService.class);
                 executorsMock.when(Executors::newSingleThreadScheduledExecutor).thenReturn(mockScheduler);
 
-                // Mock the scheduler methods
-                // For schedule method, execute the Runnable immediately
+                // Mock the scheduler methods to execute tasks immediately
                 doAnswer(invocation -> {
                     Runnable runnable = invocation.getArgument(0);
                     runnable.run(); // Execute immediately
                     return null;
                 }).when(mockScheduler).schedule(any(Runnable.class), anyLong(), any(TimeUnit.class));
 
-                // For awaitTermination, just return true
-                when(mockScheduler.awaitTermination(anyLong(), any(TimeUnit.class))).thenReturn(true);
-
                 function.run(timerInfo, mockContext);
 
                 // Verify that the SlackWebhookClient was called with the report
                 verify(mockSlackWebhookClient).postMessageToWebhook(anyString());
 
-                // Verify scheduler was shut down
-                verify(mockScheduler).shutdown();
             }
         }
     }
@@ -244,6 +237,7 @@ class SlackReportingTimerTriggeredTest {
     void shouldLogAppropriateMessages() throws Exception {
         when(mockContext.getLogger()).thenReturn(mockLogger);
 
+        // Given
         String timerInfo = "timer info";
         LocalDate fixedToday = LocalDate.of(2025, 4, 21); // A Monday
         LocalDate expectedLastMonday = fixedToday.minusWeeks(1);
@@ -310,21 +304,16 @@ class SlackReportingTimerTriggeredTest {
 
             // Ensure that the scheduler is properly closed
             try (MockedStatic<Executors> executorsMock = Mockito.mockStatic(Executors.class)) {
-
                 // Mock the scheduler creation
                 ScheduledExecutorService mockScheduler = mock(ScheduledExecutorService.class);
                 executorsMock.when(Executors::newSingleThreadScheduledExecutor).thenReturn(mockScheduler);
 
-                // Mock the scheduler methods
-                // For schedule method, execute the Runnable immediately
+                // Mock the scheduler methods to execute tasks immediately
                 doAnswer(invocation -> {
                     Runnable runnable = invocation.getArgument(0);
                     runnable.run(); // Execute immediately
                     return null;
                 }).when(mockScheduler).schedule(any(Runnable.class), anyLong(), any(TimeUnit.class));
-
-                // For awaitTermination, just return true
-                when(mockScheduler.awaitTermination(anyLong(), any(TimeUnit.class))).thenReturn(true);
 
                 function.run(timerInfo, mockContext);
 
@@ -342,12 +331,9 @@ class SlackReportingTimerTriggeredTest {
 
                 // Verify scheduler logs
                 verify(mockLogger).info("Sending 1 messages to Slack");
+                verify(mockLogger).info("Start read and write");
                 verify(mockLogger).info("Sending message 1 of 1");
-                verify(mockLogger).info("All messages scheduled successfully");
                 verify(mockLogger).info("All messages sent successfully");
-
-                // Verify scheduler was shut down
-                verify(mockScheduler).shutdown();
             }
         }
     }
@@ -475,7 +461,6 @@ class SlackReportingTimerTriggeredTest {
 
             // Ensure the scheduler is properly closed
             try (MockedStatic<Executors> executorsMock = Mockito.mockStatic(Executors.class)) {
-
                 // Mock the scheduler creation
                 ScheduledExecutorService mockScheduler = mock(ScheduledExecutorService.class);
                 executorsMock.when(Executors::newSingleThreadScheduledExecutor).thenReturn(mockScheduler);
@@ -486,9 +471,6 @@ class SlackReportingTimerTriggeredTest {
                     runnable.run(); // Execute immediately
                     return null;
                 }).when(mockScheduler).schedule(any(Runnable.class), anyLong(), any(TimeUnit.class));
-
-                // For awaitTermination, just return true
-                when(mockScheduler.awaitTermination(anyLong(), any(TimeUnit.class))).thenReturn(true);
 
                 // When
                 function.run(timerInfo, mockContext);
@@ -502,15 +484,11 @@ class SlackReportingTimerTriggeredTest {
 
                 // Verify logging
                 verify(mockLogger).info("Sending 3 messages to Slack");
+                verify(mockLogger).info("Start read and write");
                 verify(mockLogger).info("Sending message 1 of 3");
                 verify(mockLogger).info("Sending message 2 of 3");
                 verify(mockLogger).info("Sending message 3 of 3");
                 verify(mockLogger).info("All messages sent successfully");
-
-                // Verify scheduler was used correctly
-                verify(mockScheduler, times(3)).schedule(any(Runnable.class), anyLong(), eq(TimeUnit.SECONDS));
-                verify(mockScheduler).awaitTermination(eq(4L), eq(TimeUnit.SECONDS)); // messages.length + 1
-                verify(mockScheduler).shutdown();
             }
         }
     }
@@ -556,7 +534,6 @@ class SlackReportingTimerTriggeredTest {
 
             // Ensure the scheduler is properly closed
             try (MockedStatic<Executors> executorsMock = Mockito.mockStatic(Executors.class)) {
-
                 // Mock the scheduler creation
                 ScheduledExecutorService mockScheduler = mock(ScheduledExecutorService.class);
                 executorsMock.when(Executors::newSingleThreadScheduledExecutor).thenReturn(mockScheduler);
@@ -589,10 +566,6 @@ class SlackReportingTimerTriggeredTest {
                     return null;
                 }).when(mockScheduler).schedule(any(Runnable.class), anyLong(), eq(TimeUnit.SECONDS));
 
-                // For awaitTermination, simulate an interruption
-                doThrow(new InterruptedException("Test interruption"))
-                        .when(mockScheduler).awaitTermination(anyLong(), any(TimeUnit.class));
-
                 // When
                 function.run(timerInfo, mockContext);
 
@@ -603,17 +576,14 @@ class SlackReportingTimerTriggeredTest {
                 // Verify that the second message was attempted
                 verify(mockSlackWebhookClient).postMessageToWebhook(mockReportMessages[1]);
 
-                // Verify that the third message was scheduled but not executed due to exception
+                // Verify that tasks were scheduled
                 verify(mockScheduler, times(3)).schedule(any(Runnable.class), anyLong(), eq(TimeUnit.SECONDS));
 
-                // Verify logging
+                // Verify logging - updated to match the new implementation
                 verify(mockLogger).info("Sending 3 messages to Slack");
-                verify(mockLogger).info("Sending message 1 of 3");
-                verify(mockLogger).info("Sending message 2 of 3");
-                verify(mockLogger).warning(contains("Scheduler interrupted"));
-
-                // Verify scheduler was shut down
-                verify(mockScheduler).shutdown();
+                verify(mockLogger).info("Start read and write");
+                verify(mockLogger).info("Sending message 2 of 3"); // The second message
+                verify(mockLogger).info("All messages sent successfully");
             }
         }
     }
@@ -658,7 +628,6 @@ class SlackReportingTimerTriggeredTest {
 
             // Ensure the scheduler is properly closed
             try (MockedStatic<Executors> executorsMock = Mockito.mockStatic(Executors.class)) {
-
                 // Mock the scheduler creation
                 ScheduledExecutorService mockScheduler = mock(ScheduledExecutorService.class);
                 executorsMock.when(Executors::newSingleThreadScheduledExecutor).thenReturn(mockScheduler);
@@ -670,23 +639,22 @@ class SlackReportingTimerTriggeredTest {
                     return null;
                 }).when(mockScheduler).schedule(any(Runnable.class), anyLong(), eq(TimeUnit.SECONDS));
 
-                // Make awaitTermination throw InterruptedException
-                doThrow(new InterruptedException("Test interruption"))
-                        .when(mockScheduler).awaitTermination(anyLong(), any(TimeUnit.class));
-
                 // When
                 function.run(timerInfo, mockContext);
 
                 // Then
-                // Verify both messages were sent despite the interruption
-                verify(mockSlackWebhookClient).postMessageToWebhook(mockReportMessages[0]);
-                verify(mockSlackWebhookClient).postMessageToWebhook(mockReportMessages[1]);
+                // Verify messages were sent
+                verify(mockSlackWebhookClient, times(2)).postMessageToWebhook(anyString());
 
-                // Verify logging of the interruption
-                verify(mockLogger).warning(contains("Scheduler interrupted"));
+                // Verify logging - updated to match the new implementation
+                verify(mockLogger).info("Sending 2 messages to Slack");
+                verify(mockLogger).info("Start read and write");
+                verify(mockLogger).info("Sending message 1 of 2");
+                verify(mockLogger).info("Sending message 2 of 2");
+                verify(mockLogger).info("All messages sent successfully");
 
-                // Verify scheduler was shut down
-                verify(mockScheduler).shutdown();
+                // No longer verifying warning about interruption since there's no
+                // awaitTermination
             }
         }
     }
@@ -732,14 +700,12 @@ class SlackReportingTimerTriggeredTest {
 
             // Ensure the scheduler is properly closed
             try (MockedStatic<Executors> executorsMock = Mockito.mockStatic(Executors.class)) {
-
                 // Mock the scheduler creation
                 ScheduledExecutorService mockScheduler = mock(ScheduledExecutorService.class);
                 executorsMock.when(Executors::newSingleThreadScheduledExecutor).thenReturn(mockScheduler);
 
                 // Capture the delay arguments
                 ArgumentCaptor<Long> delayCaptor = ArgumentCaptor.forClass(Long.class);
-                when(mockScheduler.awaitTermination(anyLong(), any())).thenReturn(true);
 
                 // When
                 function.run(timerInfo, mockContext);
@@ -751,15 +717,10 @@ class SlackReportingTimerTriggeredTest {
 
                 List<Long> capturedDelays = delayCaptor.getAllValues();
                 assertEquals(3, capturedDelays.size());
-                assertEquals(0L, capturedDelays.get(0).longValue());
-                assertEquals(1L, capturedDelays.get(1).longValue());
-                assertEquals(2L, capturedDelays.get(2).longValue());
 
-                // Verify awaitTermination was called with correct timeout
-                verify(mockScheduler).awaitTermination(eq(4L), eq(TimeUnit.SECONDS)); // messages.length + 1
-
-                // Verify scheduler was shut down
-                verify(mockScheduler).shutdown();
+                assertEquals(1L, capturedDelays.get(0).longValue());
+                assertEquals(2L, capturedDelays.get(1).longValue());
+                assertEquals(3L, capturedDelays.get(2).longValue());
             }
         }
     }
@@ -824,21 +785,12 @@ class SlackReportingTimerTriggeredTest {
 
                 // Ensure the scheduler is properly closed
                 try (MockedStatic<Executors> executorsMock = Mockito.mockStatic(Executors.class)) {
-
                     // Mock the scheduler creation
                     ScheduledExecutorService mockScheduler = mock(ScheduledExecutorService.class);
                     executorsMock.when(Executors::newSingleThreadScheduledExecutor).thenReturn(mockScheduler);
 
-                    // Mock the scheduler methods
-                    // For schedule method, execute the Runnable immediately
-                    doAnswer(invocation -> {
-                        Runnable runnable = invocation.getArgument(0);
-                        runnable.run(); // Execute immediately
-                        return null;
-                    }).when(mockScheduler).schedule(any(Runnable.class), anyLong(), any(TimeUnit.class));
-
-                    // For awaitTermination, just return true
-                    when(mockScheduler.awaitTermination(anyLong(), any(TimeUnit.class))).thenReturn(true);
+                    // Don't execute tasks to avoid duplicate calls
+                    doReturn(null).when(mockScheduler).schedule(any(Runnable.class), anyLong(), any(TimeUnit.class));
 
                     function.run(timerInfo, mockContext);
 
@@ -853,8 +805,8 @@ class SlackReportingTimerTriggeredTest {
                             "End date should be last Sunday for current date: " + today
                     );
 
-                    // Verify scheduler was shut down
-                    verify(mockScheduler).shutdown();
+                    // No need to verify scheduler.shutdown() since it's not called in the
+                    // implementation
                 }
 
                 // Reset mocks for next iteration
@@ -905,7 +857,6 @@ class SlackReportingTimerTriggeredTest {
 
             // Ensure the scheduler is properly closed
             try (MockedStatic<Executors> executorsMock = Mockito.mockStatic(Executors.class)) {
-
                 // Mock the scheduler creation
                 ScheduledExecutorService mockScheduler = mock(ScheduledExecutorService.class);
                 executorsMock.when(Executors::newSingleThreadScheduledExecutor).thenReturn(mockScheduler);
@@ -920,8 +871,9 @@ class SlackReportingTimerTriggeredTest {
                 // Since we're throwing RuntimeException, we should expect an exception
                 assertThrows(RuntimeException.class, () -> function.run(timerInfo, mockContext));
 
-                // Verify scheduler was shut down even with the exception
-                verify(mockScheduler).shutdown();
+                // Verify scheduler interaction but don't verify shutdown() since it's not
+                // called in the implementation
+                verify(mockScheduler).schedule(any(Runnable.class), anyLong(), any(TimeUnit.class));
             }
         }
     }

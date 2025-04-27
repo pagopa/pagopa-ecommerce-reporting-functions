@@ -1,6 +1,7 @@
 package it.pagopa.ecommerce.reporting.functions;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.microsoft.azure.functions.*;
 import com.microsoft.azure.functions.annotation.FunctionName;
 import com.microsoft.azure.functions.annotation.TimerTrigger;
@@ -11,9 +12,11 @@ import it.pagopa.ecommerce.reporting.utils.SlackDateRangeReportMessageUtils;
 
 import java.time.*;
 import java.util.List;
+import java.util.TimerTask;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 
 /**
@@ -65,23 +68,22 @@ public class SlackReportingTimerTriggered {
         // Send each message to Slack
         logger.info("Sending " + reportMessages.length + " messages to Slack");
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
-        try {
-            for (int i = 0; i < reportMessages.length; i++) {
-                final int messageIndex = i;
-                scheduler.schedule(() -> {
-                    logger.info("Sending message " + (messageIndex + 1) + " of " + reportMessages.length);
-                    slackWebhookClient.postMessageToWebhook(reportMessages[messageIndex]);
-                }, i, TimeUnit.SECONDS); // Schedule each message i seconds from now
-            }
-            logger.info("All messages scheduled successfully");
+        AtomicInteger index = new AtomicInteger(0);
+        logger.info("Start read and write");
+        ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+        for (String reportMessage : reportMessages) {
+            index.getAndIncrement();
+            TimerTask task = new TimerTask() {
 
-            // Wait for all tasks to complete
-            scheduler.awaitTermination((long) reportMessages.length + 1, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
-            logger.warning("Scheduler interrupted: " + e.getMessage());
-            Thread.currentThread().interrupt();
-        } finally {
-            scheduler.shutdown();
+                @Override
+                public void run() {
+                    logger.info("Sending message " + (index.get()) + " of " + reportMessages.length);
+                    slackWebhookClient.postMessageToWebhook(reportMessage);
+                }
+
+            };
+            scheduledExecutorService.schedule(task, index.get(), TimeUnit.SECONDS);
+
         }
 
         logger.info("All messages sent successfully");

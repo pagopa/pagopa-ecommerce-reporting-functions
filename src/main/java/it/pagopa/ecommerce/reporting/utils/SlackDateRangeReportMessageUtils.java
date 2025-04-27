@@ -87,8 +87,10 @@ public class SlackDateRangeReportMessageUtils {
 
                 // Create message
                 Map<String, Object> message = new HashMap<>();
-                message.put("blocks", messageBlocks);
-                messages.add(OBJECT_MAPPER.writeValueAsString(message));
+                if (!messageBlocks.isEmpty()) {
+                    message.put("blocks", messageBlocks);
+                    messages.add(OBJECT_MAPPER.writeValueAsString(message));
+                }
 
                 currentGroupIndex += groupsAdded;
             }
