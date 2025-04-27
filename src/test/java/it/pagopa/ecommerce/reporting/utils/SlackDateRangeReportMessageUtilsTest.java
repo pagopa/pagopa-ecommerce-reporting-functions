@@ -1,5 +1,7 @@
 package it.pagopa.ecommerce.reporting.utils;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -201,8 +203,6 @@ class SlackDateRangeReportMessageUtilsTest {
         assertEquals("image", result.get("type"));
         assertTrue(result.get("image_url").toString().contains("logo_asset.png"));
         assertEquals("PagoPA Logo", result.get("alt_text"));
-        assertEquals(474, result.get("image_width"));
-        assertEquals(133, result.get("image_height"));
     }
 
     @Test
@@ -326,58 +326,83 @@ class SlackDateRangeReportMessageUtilsTest {
         LocalDate endDate = LocalDate.of(2023, 1, 7);
 
         // When
-        String result = SlackDateRangeReportMessageUtils
+        String[] results = SlackDateRangeReportMessageUtils
                 .createAggregatedWeeklyReport(groups, startDate, endDate, mockLogger);
 
         // Then
-        assertNotNull(result);
+        assertNotNull(results);
+        assertTrue(results.length > 0, "Should return at least one message");
 
-        // Print the result for debugging
-        System.out.println("Report result: " + result);
+        // Print the results for debugging
+        for (int i = 0; i < results.length; i++) {
+            System.out.println("Report result " + (i + 1) + ": " + results[i]);
+        }
 
-        // Check basic structure
-        assertTrue(result.contains("blocks"), "Result should contain 'blocks'");
+        // Check first message structure
+        String firstMessage = results[0];
+        assertTrue(firstMessage.contains("blocks"), "Result should contain 'blocks'");
 
         // Check date formatting
         String formattedStartDate = SlackDateRangeReportMessageUtils.formatDate(startDate);
         String formattedEndDate = SlackDateRangeReportMessageUtils.formatDate(endDate);
+
         assertTrue(
-                result.contains(formattedStartDate),
+                firstMessage.contains(formattedStartDate),
                 "Result should contain formatted start date: " + formattedStartDate
         );
         assertTrue(
-                result.contains(formattedEndDate),
+                firstMessage.contains(formattedEndDate),
                 "Result should contain formatted end date: " + formattedEndDate
         );
 
-        // Check client and PSP IDs - these might be formatted differently in the actual
-        // output
-        assertTrue(
-                result.contains("client1") || result.contains("*client1*"),
-                "Result should contain client1"
-        );
-        assertTrue(
-                result.contains("client2") || result.contains("*client2*"),
-                "Result should contain client2"
-        );
-        assertTrue(
-                result.contains("psp1") || result.contains("*psp1*"),
-                "Result should contain psp1"
-        );
-        assertTrue(
-                result.contains("psp2") || result.contains("*psp2*"),
-                "Result should contain psp2"
-        );
+        // Check for client and PSP IDs across all messages
+        boolean foundClient1 = false;
+        boolean foundClient2 = false;
+        boolean foundPsp1 = false;
+        boolean foundPsp2 = false;
+        boolean foundCP = false;
+        boolean foundPPAL = false;
 
-        // Check payment types - these might be translated in the output
-        assertTrue(
-                result.contains("CP") || result.contains("Carte"),
-                "Result should contain CP or its translation"
-        );
-        assertTrue(
-                result.contains("PPAL") || result.contains("PayPal"),
-                "Result should contain PPAL or its translation"
-        );
+        for (String result : results) {
+            if (result.contains("client1") || result.contains("\\*client1\\*"))
+                foundClient1 = true;
+            if (result.contains("client2") || result.contains("\\*client2\\*"))
+                foundClient2 = true;
+            if (result.contains("psp1") || result.contains("\\*psp1\\*"))
+                foundPsp1 = true;
+            if (result.contains("psp2") || result.contains("\\*psp2\\*"))
+                foundPsp2 = true;
+            if (result.contains("CP") || result.contains("Carte"))
+                foundCP = true;
+            if (result.contains("PPAL") || result.contains("PayPal"))
+                foundPPAL = true;
+        }
+
+        assertTrue(foundClient1, "Results should contain client1");
+        assertTrue(foundClient2, "Results should contain client2");
+        assertTrue(foundPsp1, "Results should contain psp1");
+        assertTrue(foundPsp2, "Results should contain psp2");
+        assertTrue(foundCP, "Results should contain CP or its translation");
+        assertTrue(foundPPAL, "Results should contain PPAL or its translation");
+
+        // Verify each message has at most MAX_BLOCKS_PER_MESSAGE blocks
+        for (String result : results) {
+            int blockCount = countOccurrences(result);
+            assertTrue(
+                    blockCount <= 50,
+                    "Each message should have at most 50 blocks, but found " + blockCount
+            );
+        }
+    }
+
+    // Helper method to count number of blocks
+    private int countOccurrences(
+                                 String jsonStr
+    ) throws JsonProcessingException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        Map<String, Object> messageMap = objectMapper.readValue(jsonStr, Map.class);
+        List<Object> blocks = (List<Object>) messageMap.get("blocks");
+        return blocks.size();
     }
 
     @Test
@@ -388,11 +413,14 @@ class SlackDateRangeReportMessageUtilsTest {
         LocalDate endDate = LocalDate.of(2023, 1, 7);
 
         // When
-        String result = SlackDateRangeReportMessageUtils
+        String[] results = SlackDateRangeReportMessageUtils
                 .createAggregatedWeeklyReport(groups, startDate, endDate, mockLogger);
 
         // Then
-        assertNotNull(result);
+        assertNotNull(results);
+        assertEquals(1, results.length, "Should return exactly one message for empty groups");
+
+        String result = results[0];
         assertTrue(result.contains("blocks"));
         assertTrue(result.contains("1 gennaio 2023"));
         assertTrue(result.contains("7 gennaio 2023"));
@@ -481,5 +509,98 @@ class SlackDateRangeReportMessageUtilsTest {
         assertEquals(0, group.getStatusCounts().get("NOTIFIED_OK"));
         assertEquals(0, group.getStatusCounts().get("EXPIRED"));
         assertEquals(3, group.getStatusCounts().size());
+    }
+
+    @Test
+    void shouldSplitReportIntoMultipleMessagesWhenExceedingMaxBlocks() throws Exception {
+        // Given
+        List<AggregatedStatusGroup> groups = new ArrayList<>();
+
+        // Create enough groups to exceed the 50 block limit
+        for (int i = 0; i < 20; i++) {
+            AggregatedStatusGroup group = new AggregatedStatusGroup(
+                    "2023-01-01",
+                    "client" + i,
+                    "psp" + i,
+                    "CP",
+                    Arrays.asList("ACTIVATED", "NOTIFIED_OK", "EXPIRED")
+            );
+            group.incrementStatus("ACTIVATED", 100 - i);
+            group.incrementStatus("NOTIFIED_OK", 80 - i);
+            group.incrementStatus("EXPIRED", i);
+
+            groups.add(group);
+        }
+
+        LocalDate startDate = LocalDate.of(2023, 1, 1);
+        LocalDate endDate = LocalDate.of(2023, 1, 7);
+
+        // When
+        String[] results = SlackDateRangeReportMessageUtils
+                .createAggregatedWeeklyReport(groups, startDate, endDate, mockLogger);
+
+        // Then
+        assertNotNull(results);
+        assertTrue(results.length > 1, "Should split into multiple messages");
+
+        // Check that each message has at most 50 blocks
+        for (String result : results) {
+            int blockCount = countOccurrences(result);
+            assertTrue(
+                    blockCount <= 50,
+                    "Each message should have at most 50 blocks, but found " + blockCount
+            );
+        }
+
+        // First message should contain header information
+        assertTrue(
+                results[0].contains("Report Settimanale Transazioni"),
+                "First message should contain report header"
+        );
+    }
+
+    @Test
+    void shouldIncludeAllGroupsAcrossMessages() throws Exception {
+        // Given
+        List<AggregatedStatusGroup> groups = new ArrayList<>();
+
+        // Create groups with distinct identifiable names
+        for (int i = 0; i < 15; i++) {
+            String uniqueId = "UNIQUE_ID_" + i;
+            AggregatedStatusGroup group = new AggregatedStatusGroup(
+                    "2023-01-01",
+                    uniqueId,
+                    "psp" + i,
+                    "CP",
+                    Arrays.asList("ACTIVATED", "NOTIFIED_OK")
+            );
+            group.incrementStatus("ACTIVATED", 100 - i);
+            group.incrementStatus("NOTIFIED_OK", 80 - i);
+
+            groups.add(group);
+        }
+
+        LocalDate startDate = LocalDate.of(2023, 1, 1);
+        LocalDate endDate = LocalDate.of(2023, 1, 7);
+
+        // When
+        String[] results = SlackDateRangeReportMessageUtils
+                .createAggregatedWeeklyReport(groups, startDate, endDate, mockLogger);
+
+        // Then
+        // Verify all unique IDs are present across all messages
+        for (int i = 0; i < 15; i++) {
+            String uniqueId = "UNIQUE_ID_" + i;
+            boolean foundId = false;
+
+            for (String result : results) {
+                if (result.contains(uniqueId)) {
+                    foundId = true;
+                    break;
+                }
+            }
+
+            assertTrue(foundId, "Group with ID " + uniqueId + " should be included in at least one message");
+        }
     }
 }

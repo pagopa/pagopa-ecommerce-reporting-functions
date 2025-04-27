@@ -14,8 +14,10 @@ These are all environment variables needed by the application:
 | ECOMMERCE_HELPDESK_SERVICE_READ_TIMEOUT       |     | Timeout for requests towards eCommerce Helpdesk service                 | number |         |
 | ECOMMERCE_HELPDESK_SERVICE_CONNECTION_TIMEOUT |     | Timeout for establishing connections towards eCommerce Helpdesk service | number |         |
 | ECOMMERCE_HELPDESK_SERVICE_API_KEY            |     | Helpdesk methods API key                                                | string |         |
+| REPORT_START_DATE                             |     | Force report start date. Format: d-m-y. Ex.: 23-04-2025.                | string |         |
+| REPORT_END_DATE                               |     | Force report end date. Format: d-m-y. Ex.: 23-04-2025.                  | string |         |
 
-An example configuration of these environment variables is in the `.env.example` file.
+An example configuration of these environment variables is in the `local.settings.json.example` file.
 
 ## Installation
 

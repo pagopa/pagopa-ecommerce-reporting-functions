@@ -76,6 +76,61 @@ class TransactionStatusAggregationServiceTest {
         assertEquals(6, counts.get("ACTIVATED"));
         assertEquals(6, counts.get("CLOSED"));
         assertEquals(11, counts.get("NOTIFIED_OK"));
-        assertEquals(0, counts.get("EXPIRED"));
+
+        // EXPIRED shouldn't be in the map (0 occurrences)
+        assertFalse(counts.containsKey("EXPIRED"));
+    }
+
+    @Test
+    void testAggregateStatusCountByDateRangeFiltersZeroCounts() {
+        // Given
+        LocalDate startDate = LocalDate.of(2024, 4, 1);
+        LocalDate endDate = LocalDate.of(2024, 4, 1);
+        String partitionKey = "2024-04-01";
+
+        TableEntity entity = new TableEntity(partitionKey, "row1");
+        entity.addProperty("clientId", "clientA");
+        entity.addProperty("pspId", "pspX");
+        entity.addProperty("paymentTypeCode", "PT1");
+        entity.addProperty("ACTIVATED", 5);
+        entity.addProperty("CLOSED", 0);
+        entity.addProperty("NOTIFIED_OK", 3);
+        entity.addProperty("EXPIRED", 0);
+
+        Iterable<TableEntity> iterable = List.of(entity);
+
+        // Mocking the PagedIterable with an iterator
+        PagedIterable<TableEntity> pagedEntities = mock(PagedIterable.class);
+        when(pagedEntities.iterator()).thenReturn(iterable.iterator());
+
+        when(mockTableClient.listEntities(any(ListEntitiesOptions.class), isNull(), isNull()))
+                .thenReturn(pagedEntities);
+
+        // When
+        List<AggregatedStatusGroup> result = service.aggregateStatusCountByDateRange(startDate, endDate, mockLogger);
+
+        // Then
+        assertEquals(1, result.size());
+
+        AggregatedStatusGroup group = result.get(0);
+        assertEquals("2024-04-01", group.getDate());
+        assertEquals("clientA", group.getClientId());
+        assertEquals("pspX", group.getPspId());
+        assertEquals("PT1", group.getPaymentTypeCode());
+
+        Map<String, Integer> counts = group.getStatusCounts();
+
+        // Verify that statuses with non-zero counts are present
+        assertTrue(counts.containsKey("ACTIVATED"));
+        assertEquals(5, counts.get("ACTIVATED"));
+        assertTrue(counts.containsKey("NOTIFIED_OK"));
+        assertEquals(3, counts.get("NOTIFIED_OK"));
+
+        // Verify that statuses with zero counts are filtered out
+        assertFalse(counts.containsKey("CLOSED"));
+        assertFalse(counts.containsKey("EXPIRED"));
+
+        // Verify the size of the map (should only contain the non-zero statuses)
+        assertEquals(2, counts.size());
     }
 }
