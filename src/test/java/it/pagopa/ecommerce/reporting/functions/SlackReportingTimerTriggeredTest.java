@@ -18,8 +18,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Logger;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -569,7 +568,7 @@ class SlackReportingTimerTriggeredTest {
                     )
             ).thenReturn(mockReportMessages);
 
-            // Create a testable instance with a custom implementation that simulates
+            // Restable instance with a custom implementation that simulates
             // an InterruptedException during sleep
             TestableSlackReportingTimerTriggered function = new TestableSlackReportingTimerTriggered(
                     mockEndpoint,
@@ -594,6 +593,62 @@ class SlackReportingTimerTriggeredTest {
 
             // Verify logging of the interruption
             verify(mockLogger).warning(contains("Sleep interrupted"));
+        }
+    }
+
+    @Test
+    void shouldReturnCurrentDate() {
+        // Given
+        SlackReportingTimerTriggered function = new SlackReportingTimerTriggered();
+
+        // When
+        LocalDate result = function.getCurrentDate();
+
+        // Then
+        // Since LocalDate.now() will give the current date which might change during
+        // test execution,
+        // we'll just verify it's not null and is close to now
+        assertNotNull(result, "Current date should not be null");
+        LocalDate today = LocalDate.now();
+        // Check if the date is within 1 day of today (to handle timezone differences)
+        assertTrue(
+                Math.abs(result.toEpochDay() - today.toEpochDay()) <= 1,
+                "Current date should be close to today"
+        );
+    }
+
+    @Test
+    void shouldGetEnvironmentVariable() {
+        // Given
+        String variableName = "TEST_ENV_VAR";
+        String expectedValue = "test-value";
+
+        try (MockedStatic<System> mockedSystem = Mockito.mockStatic(System.class)) {
+            mockedSystem.when(() -> System.getenv(variableName)).thenReturn(expectedValue);
+
+            // When
+            SlackReportingTimerTriggered function = new SlackReportingTimerTriggered();
+            String result = function.getEnvVariable(variableName);
+
+            // Then
+            assertEquals(expectedValue, result, "Should return environment variable value");
+        }
+    }
+
+    @Test
+    void shouldReturnNullForMissingEnvironmentVariable() {
+        // Given
+        String variableName = "NON_EXISTENT_VAR";
+
+        try (MockedStatic<System> mockedSystem = Mockito.mockStatic(System.class)) {
+            mockedSystem.when(() -> System.getenv(variableName)).thenReturn(null);
+
+            // When
+            SlackReportingTimerTriggered function = new SlackReportingTimerTriggered();
+            String result = function.getEnvVariable(variableName);
+
+            // Then
+            assertNull(result, "Should return null for missing environment variable");
         }
     }
 }
