@@ -63,13 +63,8 @@ public class WriteDataService {
 
             tableClient.createEntity(entity);
             log.info("Successfully inserted state metrics for clientId: " + clientId + ", pspId: " + pspId);
-            System.out.println("Successfully inserted state metrics for clientId: " + clientId + ", pspId: " + pspId);
         } catch (Exception e) {
             log.warning(
-                    "Failed to write state metrics to Azure Table Storage. Error: " + e.getMessage() +
-                            " | JSON content: " + jsonNode.toString()
-            );
-            System.out.println(
                     "Failed to write state metrics to Azure Table Storage. Error: " + e.getMessage() +
                             " | JSON content: " + jsonNode.toString()
             );
