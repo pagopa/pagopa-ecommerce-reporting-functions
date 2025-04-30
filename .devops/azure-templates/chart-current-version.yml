@@ -1,7 +1,6 @@
 # Read the current chart version and output it two variables
 # -> 'chart_current_version.version' : the Chart version
 # -> 'chart_current_version.appVersion': the application version
-
 steps:
   - task: Bash@3
     name: chart_current_version
