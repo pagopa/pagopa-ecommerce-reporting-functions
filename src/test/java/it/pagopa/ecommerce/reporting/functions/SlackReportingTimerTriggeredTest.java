@@ -331,9 +331,9 @@ class SlackReportingTimerTriggeredTest {
 
                 // Verify scheduler logs
                 verify(mockLogger).info("Sending 1 messages to Slack");
-                verify(mockLogger).info("Start read and write");
+                verify(mockLogger).info("Start reportMessage scheduling");
                 verify(mockLogger).info("Sending message 1 of 1");
-                verify(mockLogger).info("All messages sent successfully");
+                verify(mockLogger).info("All messages scheduled successfully");
             }
         }
     }
@@ -388,6 +388,99 @@ class SlackReportingTimerTriggeredTest {
 
             // Verify scheduler was never used for scheduling tasks
             verify(mockScheduler, never()).schedule(any(Runnable.class), anyLong(), any(TimeUnit.class));
+        }
+    }
+
+    @Test
+    void shouldSendOneMessageWhenReportIsSplit() throws Exception {
+        when(mockContext.getLogger()).thenReturn(mockLogger);
+
+        // Given
+        String timerInfo = "timer info";
+        LocalDate fixedToday = LocalDate.of(2025, 4, 21); // A Monday
+        LocalDate expectedLastMonday = fixedToday.minusWeeks(1);
+        LocalDate expectedLastSunday = expectedLastMonday.with(DayOfWeek.SUNDAY);
+        String mockEndpoint = "https://hooks.slack-mock.com/services/test/webhook";
+
+        // Large list that would result in multiple messages
+        List<AggregatedStatusGroup> mockAggregatedStatuses = new ArrayList<>();
+        List<String> statusFields = Arrays.asList("ACTIVATED", "CLOSED", "NOTIFIED_OK", "EXPIRED");
+
+        // Add enough groups to exceed the 50 block limit
+        AggregatedStatusGroup group = new AggregatedStatusGroup(
+                "2023-05-25",
+                "client",
+                "psp",
+                "PT",
+                statusFields
+        );
+        group.incrementStatus("ACTIVATED", 100);
+        group.incrementStatus("CLOSED", 50);
+        group.incrementStatus("NOTIFIED_OK", 30);
+        group.incrementStatus("EXPIRED", 1);
+        mockAggregatedStatuses.add(group);
+
+        // Mock the aggregation service to return our mock statuses
+        when(
+                mockAggregationService.aggregateStatusCountByDateRange(
+                        eq(expectedLastMonday),
+                        eq(expectedLastSunday),
+                        any(Logger.class)
+                )
+        )
+                .thenReturn(mockAggregatedStatuses);
+
+        // Create mock report messages - simulate multiple messages returned
+        String[] mockReportMessages = {
+                "First part of the report"
+        };
+
+        try (MockedStatic<SlackDateRangeReportMessageUtils> mockedReportUtils = Mockito
+                .mockStatic(SlackDateRangeReportMessageUtils.class)) {
+            mockedReportUtils.when(
+                    () -> SlackDateRangeReportMessageUtils.createAggregatedWeeklyReport(
+                            eq(mockAggregatedStatuses),
+                            eq(expectedLastMonday),
+                            eq(expectedLastSunday),
+                            any(Logger.class)
+                    )
+            )
+                    .thenReturn(mockReportMessages);
+
+            // Create testable instance
+            TestableSlackReportingTimerTriggered function = new TestableSlackReportingTimerTriggered(
+                    mockEndpoint,
+                    fixedToday,
+                    mockAggregationService,
+                    mockSlackWebhookClient
+            );
+
+            // Ensure the scheduler is properly closed
+            try (MockedStatic<Executors> executorsMock = Mockito.mockStatic(Executors.class)) {
+                // Mock the scheduler creation
+                ScheduledExecutorService mockScheduler = mock(ScheduledExecutorService.class);
+                executorsMock.when(Executors::newSingleThreadScheduledExecutor).thenReturn(mockScheduler);
+
+                // Mock the scheduler methods to execute tasks immediately
+                doAnswer(invocation -> {
+                    Runnable runnable = invocation.getArgument(0);
+                    runnable.run(); // Execute immediately
+                    return null;
+                }).when(mockScheduler).schedule(any(Runnable.class), anyLong(), any(TimeUnit.class));
+
+                // When
+                function.run(timerInfo, mockContext);
+
+                // Then
+                // Verify that the webhook client was called for each message
+                verify(mockSlackWebhookClient, times(1)).postMessageToWebhook(mockReportMessages[0]);
+
+                // Verify logging
+                verify(mockLogger).info("Sending 1 messages to Slack");
+                verify(mockLogger).info("Start reportMessage scheduling");
+                verify(mockLogger).info("Sending message 1 of 1");
+                verify(mockLogger).info("All messages scheduled successfully");
+            }
         }
     }
 
@@ -484,11 +577,11 @@ class SlackReportingTimerTriggeredTest {
 
                 // Verify logging
                 verify(mockLogger).info("Sending 3 messages to Slack");
-                verify(mockLogger).info("Start read and write");
+                verify(mockLogger).info("Start reportMessage scheduling");
                 verify(mockLogger).info("Sending message 1 of 3");
                 verify(mockLogger).info("Sending message 2 of 3");
                 verify(mockLogger).info("Sending message 3 of 3");
-                verify(mockLogger).info("All messages sent successfully");
+                verify(mockLogger).info("All messages scheduled successfully");
             }
         }
     }
@@ -581,9 +674,9 @@ class SlackReportingTimerTriggeredTest {
 
                 // Verify logging - updated to match the new implementation
                 verify(mockLogger).info("Sending 3 messages to Slack");
-                verify(mockLogger).info("Start read and write");
+                verify(mockLogger).info("Start reportMessage scheduling");
                 verify(mockLogger).info("Sending message 2 of 3"); // The second message
-                verify(mockLogger).info("All messages sent successfully");
+                verify(mockLogger).info("All messages scheduled successfully");
             }
         }
     }
@@ -648,10 +741,10 @@ class SlackReportingTimerTriggeredTest {
 
                 // Verify logging - updated to match the new implementation
                 verify(mockLogger).info("Sending 2 messages to Slack");
-                verify(mockLogger).info("Start read and write");
+                verify(mockLogger).info("Start reportMessage scheduling");
                 verify(mockLogger).info("Sending message 1 of 2");
                 verify(mockLogger).info("Sending message 2 of 2");
-                verify(mockLogger).info("All messages sent successfully");
+                verify(mockLogger).info("All messages scheduled successfully");
 
                 // No longer verifying warning about interruption since there's no
                 // awaitTermination

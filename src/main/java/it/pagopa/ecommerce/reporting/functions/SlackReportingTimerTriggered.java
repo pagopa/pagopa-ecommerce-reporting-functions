@@ -67,9 +67,8 @@ public class SlackReportingTimerTriggered {
 
         // Send each message to Slack
         logger.info("Sending " + reportMessages.length + " messages to Slack");
-        ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
-        AtomicInteger index = new AtomicInteger(0);
-        logger.info("Start read and write");
+        final AtomicInteger index = new AtomicInteger(0);
+        logger.info("Start reportMessage scheduling");
         ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
         for (String reportMessage : reportMessages) {
             index.getAndIncrement();
@@ -79,14 +78,13 @@ public class SlackReportingTimerTriggered {
                 public void run() {
                     logger.info("Sending message " + (index.get()) + " of " + reportMessages.length);
                     slackWebhookClient.postMessageToWebhook(reportMessage);
+                    logger.info("Message sent successfully");
                 }
 
             };
             scheduledExecutorService.schedule(task, index.get(), TimeUnit.SECONDS);
-
         }
-
-        logger.info("All messages sent successfully");
+        logger.info("All messages scheduled successfully");
     }
 
     protected LocalDate getDateFromString(
