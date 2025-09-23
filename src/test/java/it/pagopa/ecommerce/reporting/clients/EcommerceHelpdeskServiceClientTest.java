@@ -98,22 +98,18 @@ public class EcommerceHelpdeskServiceClientTest {
     @Test
     public void testNodeFetch() throws IOException {
         mockStatic = mockStatic(HttpClients.class);
-        when(HttpClients.createDefault()).thenReturn(httpClientMock);
 
-        System.out.println("HELPDESK_SERVICE_URI: " + System.getenv("HELPDESK_SERVICE_URI"));
-        System.out.println("HELPDESK_SERVICE_API_ENDPOINT: " + System.getenv("HELPDESK_SERVICE_API_ENDPOINT"));
-        System.out.println("HELPDESK_SERVICE_API_KEY: " + System.getenv("HELPDESK_SERVICE_API_KEY"));
-
-        when(httpResponseMock.getStatusLine()).thenReturn(statusLineMock);
-        when(statusLineMock.getStatusCode()).thenReturn(200);
+        CloseableHttpClient workingHttpClient = mock(CloseableHttpClient.class);
+        CloseableHttpResponse workingResponse = mock(CloseableHttpResponse.class);
 
         StringEntity entity = new StringEntity("{\"field\":\"1\"}", StandardCharsets.UTF_8);
         entity.setContentType("application/json");
-        when(httpResponseMock.getEntity()).thenReturn(entity);
+        when(workingResponse.getEntity()).thenReturn(entity);
 
-        when(httpClientMock.execute(any(HttpPost.class))).thenReturn(
-                httpResponseMock
-        );
+        when(workingHttpClient.execute(any(HttpPost.class))).thenReturn(workingResponse);
+
+        when(HttpClients.createDefault()).thenReturn(workingHttpClient);
+
         ecommerceHelpdeskServiceClient = EcommerceHelpdeskServiceClient.getInstance(mockLogger);
 
         try {
@@ -130,6 +126,9 @@ public class EcommerceHelpdeskServiceClientTest {
             System.out.println("Node is empty: " + node.isEmpty());
             assertNotNull(node);
             assertFalse(node.isEmpty());
+            // Add this right after the fetchTransactionMetrics call
+            verify(workingHttpClient).execute(any(HttpPost.class));
+
         } catch (Exception e) {
             System.out.println("Exception during fetchTransactionMetrics: " + e.getMessage());
             e.printStackTrace();
