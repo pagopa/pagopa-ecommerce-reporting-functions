@@ -31,21 +31,28 @@ public class SlackReportingTimerTriggered {
     @FunctionName("SlackReportingTimerTriggered")
     public void run(
                     @TimerTrigger(
-                            name = "slackTableMessageTimerInfo", schedule = "%NCRON_SCHEDULE_SLACK_TABLE_REPORTING%"
+                            name = "slackMessageTimerInfo", schedule = "%NCRON_SCHEDULE_SLACK_REPORTING%"
                     ) String timerInfo,
                     final ExecutionContext context
     ) throws JsonProcessingException {
 
         Logger logger = context.getLogger();
-        logger.info("Java Timer trigger SlackReportingTableReport executed at: " + LocalDateTime.now());
+        logger.info("Java Timer trigger SlackReportingTimerTriggered executed at: " + LocalDateTime.now());
 
         String endpoint = getEnvVariable("ECOMMERCE_SLACK_REPORTING_WEBHOOK_ENDPOINT");
+        String reportStartDate = getEnvVariable("REPORT_START_DATE");
+        String reportEndDate = getEnvVariable("REPORT_END_DATE");
 
         SlackWebhookClient slackWebhookClient = createSlackWebhookClient(endpoint);
         LocalDate today = getCurrentDate();
 
         LocalDate startDate = today.minusWeeks(1).with(DayOfWeek.MONDAY);
         LocalDate endDate = startDate.with(DayOfWeek.SUNDAY);
+
+        if (reportStartDate != null && reportEndDate != null) {
+            startDate = getDateFromString(reportStartDate, startDate);
+            endDate = getDateFromString(reportEndDate, endDate);
+        }
 
         TransactionStatusAggregationService transactionStatusAggregationService = createAggregationService();
         List<AggregatedStatusGroup> aggregatedStatuses = transactionStatusAggregationService
@@ -56,7 +63,7 @@ public class SlackReportingTimerTriggered {
                         ", results: " + aggregatedStatuses.size()
         );
 
-        // Use the new table-based report generator
+        // Create the report messages
         String[] reportMessages = SlackDateRangeReportMessageUtils
                 .createAggregatedTableWeeklyReport(aggregatedStatuses, startDate, endDate, logger);
 
@@ -74,10 +81,29 @@ public class SlackReportingTimerTriggered {
                     slackWebhookClient.postMessageToWebhook(reportMessage);
                 }
             };
-            scheduledExecutorService.schedule(task, currentIndex, TimeUnit.SECONDS);
+            scheduledExecutorService.schedule(task, index.get(), TimeUnit.SECONDS);
+
         }
 
-        logger.info("All table messages scheduled successfully");
+        logger.info("All messages sent successfully");
+    }
+
+    protected LocalDate getDateFromString(
+                                          String dateFormat,
+                                          LocalDate defaultDate
+    ) {
+        try {
+            String[] dateComponents = dateFormat.split("-");
+            if (dateComponents.length == 3) {
+                int day = Integer.parseInt(dateComponents[0]);
+                int month = Integer.parseInt(dateComponents[1]);
+                int year = Integer.parseInt(dateComponents[2]);
+                return LocalDate.now().withYear(year).withMonth(month).withDayOfMonth(day);
+            }
+        } catch (NumberFormatException e) {
+            return defaultDate;
+        }
+        return defaultDate;
     }
 
     /**
