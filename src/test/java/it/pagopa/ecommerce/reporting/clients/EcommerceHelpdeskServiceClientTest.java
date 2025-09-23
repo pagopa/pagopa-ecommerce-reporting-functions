@@ -94,26 +94,39 @@ public class EcommerceHelpdeskServiceClientTest {
         System.out.println("HELPDESK_SERVICE_API_ENDPOINT: " + System.getenv("HELPDESK_SERVICE_API_ENDPOINT"));
         System.out.println("HELPDESK_SERVICE_API_KEY: " + System.getenv("HELPDESK_SERVICE_API_KEY"));
 
+        when(httpResponseMock.getStatusLine()).thenReturn(statusLineMock);
+        when(statusLineMock.getStatusCode()).thenReturn(200);
+
+        StringEntity entity = new StringEntity("{\"field\":\"1\"}", StandardCharsets.UTF_8);
+        entity.setContentType("application/json");
+        when(httpResponseMock.getEntity()).thenReturn(entity);
+
         when(httpClientMock.execute(any(HttpPost.class))).thenReturn(
                 httpResponseMock
         );
-        when(httpResponseMock.getEntity()).thenReturn(new StringEntity("{\"field\":\"1\"}", StandardCharsets.UTF_8));
-
         ecommerceHelpdeskServiceClient = EcommerceHelpdeskServiceClient.getInstance(mockLogger);
-        JsonNode node = ecommerceHelpdeskServiceClient.fetchTransactionMetrics(
-                "clientId",
-                "pspId",
-                "paymentTypeCode",
-                OffsetDateTime.now(),
-                OffsetDateTime.now().minusHours(1)
-        );
 
-        // Print the node
-        System.out.println("Node: " + node);
-        System.out.println("Node is empty: " + node.isEmpty());
-        assertNotNull(node);
-        assertFalse(node.isEmpty());
-        mockStatic.close();
+        try {
+            JsonNode node = ecommerceHelpdeskServiceClient.fetchTransactionMetrics(
+                    "clientId",
+                    "pspId",
+                    "paymentTypeCode",
+                    OffsetDateTime.now(),
+                    OffsetDateTime.now().minusHours(1)
+            );
+
+            // Print the node
+            System.out.println("Node: " + node);
+            System.out.println("Node is empty: " + node.isEmpty());
+            assertNotNull(node);
+            assertFalse(node.isEmpty());
+        } catch (Exception e) {
+            System.out.println("Exception during fetchTransactionMetrics: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        } finally {
+            mockStatic.close();
+        }
     }
 
 }
