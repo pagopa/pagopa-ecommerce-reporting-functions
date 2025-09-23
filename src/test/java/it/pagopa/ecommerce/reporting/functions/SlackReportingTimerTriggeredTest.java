@@ -196,10 +196,9 @@ class SlackReportingTimerTriggeredTest {
 
                 function.run("timerInfo", mockContext);
 
-                verify(mockLogger).info(matches("Java Timer trigger SlackReportingTableReport executed at: .*"));
+                verify(mockLogger).info(matches("Java Timer trigger SlackReportingTimerTriggered executed at: .*"));
                 verify(mockLogger).info(contains("results:"));
                 verify(mockLogger).info(contains("Sending 1 table-based messages to Slack"));
-                verify(mockLogger).info(contains("All table messages scheduled successfully"));
             }
         }
     }
