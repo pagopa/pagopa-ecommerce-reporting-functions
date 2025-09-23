@@ -25,6 +25,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @SetEnvironmentVariable(key = "HELPDESK_SERVICE_API_KEY", value = "API_KEY")
+@SetEnvironmentVariable(key = "HELPDESK_SERVICE_URI", value = "http://localhost")
+@SetEnvironmentVariable(key = "HELPDESK_SERVICE_API_ENDPOINT", value = "/mock")
 @ExtendWith(MockitoExtension.class)
 public class EcommerceHelpdeskServiceClientTest {
 
@@ -88,6 +90,10 @@ public class EcommerceHelpdeskServiceClientTest {
         mockStatic = mockStatic(HttpClients.class);
         when(HttpClients.createDefault()).thenReturn(httpClientMock);
 
+        System.out.println("HELPDESK_SERVICE_URI: " + System.getenv("HELPDESK_SERVICE_URI"));
+        System.out.println("HELPDESK_SERVICE_API_ENDPOINT: " + System.getenv("HELPDESK_SERVICE_API_ENDPOINT"));
+        System.out.println("HELPDESK_SERVICE_API_KEY: " + System.getenv("HELPDESK_SERVICE_API_KEY"));
+
         when(httpClientMock.execute(any(HttpPost.class))).thenReturn(
                 httpResponseMock
         );
@@ -101,6 +107,10 @@ public class EcommerceHelpdeskServiceClientTest {
                 OffsetDateTime.now(),
                 OffsetDateTime.now().minusHours(1)
         );
+
+        // Print the node
+        System.out.println("Node: " + node);
+        System.out.println("Node is empty: " + node.isEmpty());
         assertNotNull(node);
         assertFalse(node.isEmpty());
         mockStatic.close();
