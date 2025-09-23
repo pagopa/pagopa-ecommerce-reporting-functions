@@ -9,6 +9,7 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junitpioneer.jupiter.SetEnvironmentVariable;
@@ -17,6 +18,7 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.util.logging.Logger;
@@ -48,6 +50,14 @@ public class EcommerceHelpdeskServiceClientTest {
     private MockedStatic<HttpClients> mockStatic;
 
     EcommerceHelpdeskServiceClient ecommerceHelpdeskServiceClient;
+
+    @BeforeEach
+    public void setUp() throws Exception {
+        // Reset the singleton before each test
+        Field instance = EcommerceHelpdeskServiceClient.class.getDeclaredField("instance");
+        instance.setAccessible(true);
+        instance.set(null, null);
+    }
 
     @Test
     public void instanceTest() {
