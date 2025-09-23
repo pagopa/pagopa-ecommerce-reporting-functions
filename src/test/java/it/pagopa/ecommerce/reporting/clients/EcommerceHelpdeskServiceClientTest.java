@@ -9,7 +9,6 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junitpioneer.jupiter.SetEnvironmentVariable;
@@ -18,7 +17,6 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.util.logging.Logger;
@@ -27,8 +25,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @SetEnvironmentVariable(key = "HELPDESK_SERVICE_API_KEY", value = "API_KEY")
-@SetEnvironmentVariable(key = "HELPDESK_SERVICE_URI", value = "http://localhost")
-@SetEnvironmentVariable(key = "HELPDESK_SERVICE_API_ENDPOINT", value = "/mock")
+@SetEnvironmentVariable(key = "HELPDESK_SERVICE_URI", value = "API_KEY")
+@SetEnvironmentVariable(key = "HELPDESK_SERVICE_API_ENDPOINT", value = "API_KEY")
 @ExtendWith(MockitoExtension.class)
 public class EcommerceHelpdeskServiceClientTest {
 
@@ -51,71 +49,63 @@ public class EcommerceHelpdeskServiceClientTest {
 
     EcommerceHelpdeskServiceClient ecommerceHelpdeskServiceClient;
 
-    @BeforeEach
-    public void setUp() throws Exception {
-        // Reset the singleton before each test
-        Field instance = EcommerceHelpdeskServiceClient.class.getDeclaredField("instance");
-        instance.setAccessible(true);
-        instance.set(null, null);
-    }
-
-    private static void setStaticFinalField(
-                                            Field field,
-                                            Object newValue
-    ) throws Exception {
-        field.setAccessible(true);
-
-        // Remove final modifier
-        Field modifiersField = Field.class.getDeclaredField("modifiers");
-        modifiersField.setAccessible(true);
-        modifiersField.setInt(field, field.getModifiers() & ~java.lang.reflect.Modifier.FINAL);
-
-        // Set the new value
-        field.set(null, newValue);
+    @Test
+    public void instanceTest() {
+        assertNotNull(EcommerceHelpdeskServiceClient.getInstance(mockLogger));
     }
 
     @Test
-    public void testNodeFetch() throws Exception {
+    public void fetchTransactionMetricsTestNoClientHttp() {
+        ecommerceHelpdeskServiceClient = EcommerceHelpdeskServiceClient.getInstance(mockLogger);
+        JsonNode node = ecommerceHelpdeskServiceClient.fetchTransactionMetrics(
+                "clientId",
+                "pspId",
+                "paymentTypeCode",
+                OffsetDateTime.now(),
+                OffsetDateTime.now().minusHours(1)
+        );
+        assertNotNull(node);
+        assertTrue(node.isEmpty());
+    }
+
+    @Test
+    public void fetchTransactionMetricsTestNoValidData() {
         mockStatic = mockStatic(HttpClients.class);
-        setStaticFinalField(EcommerceHelpdeskServiceClient.class.getDeclaredField("API_KEY"), "API_KEY");
+        when(HttpClients.createDefault()).thenReturn(httpClientMock);
+        ecommerceHelpdeskServiceClient = EcommerceHelpdeskServiceClient.getInstance(mockLogger);
+        JsonNode node = ecommerceHelpdeskServiceClient.fetchTransactionMetrics(
+                null,
+                "pspId",
+                "paymentTypeCode",
+                OffsetDateTime.now(),
+                OffsetDateTime.now().minusHours(1)
+        );
+        assertNotNull(node);
+        assertTrue(node.isEmpty());
+        mockStatic.close();
+    }
 
-        CloseableHttpClient workingHttpClient = mock(CloseableHttpClient.class);
-        CloseableHttpResponse workingResponse = mock(CloseableHttpResponse.class);
+    @Test
+    public void testNodeFetch() throws IOException {
+        mockStatic = mockStatic(HttpClients.class);
+        when(HttpClients.createDefault()).thenReturn(httpClientMock);
 
-        StringEntity entity = new StringEntity("{\"field\":\"1\"}", StandardCharsets.UTF_8);
-        entity.setContentType("application/json");
-        when(workingResponse.getEntity()).thenReturn(entity);
-
-        when(workingHttpClient.execute(any(HttpPost.class))).thenReturn(workingResponse);
-
-        when(HttpClients.createDefault()).thenReturn(workingHttpClient);
+        when(httpClientMock.execute(any(HttpPost.class))).thenReturn(
+                httpResponseMock
+        );
+        when(httpResponseMock.getEntity()).thenReturn(new StringEntity("{\"field\":\"1\"}", StandardCharsets.UTF_8));
 
         ecommerceHelpdeskServiceClient = EcommerceHelpdeskServiceClient.getInstance(mockLogger);
-
-        try {
-            JsonNode node = ecommerceHelpdeskServiceClient.fetchTransactionMetrics(
-                    "clientId",
-                    "pspId",
-                    "paymentTypeCode",
-                    OffsetDateTime.now(),
-                    OffsetDateTime.now().minusHours(1)
-            );
-
-            // Print the node
-            System.out.println("Node: " + node);
-            System.out.println("Node is empty: " + node.isEmpty());
-            assertNotNull(node);
-            assertFalse(node.isEmpty());
-            // Add this right after the fetchTransactionMetrics call
-            verify(workingHttpClient).execute(any(HttpPost.class));
-
-        } catch (Exception e) {
-            System.out.println("Exception during fetchTransactionMetrics: " + e.getMessage());
-            e.printStackTrace();
-            throw e;
-        } finally {
-            mockStatic.close();
-        }
+        JsonNode node = ecommerceHelpdeskServiceClient.fetchTransactionMetrics(
+                "clientId",
+                "pspId",
+                "paymentTypeCode",
+                OffsetDateTime.now(),
+                OffsetDateTime.now().minusHours(1)
+        );
+        assertNotNull(node);
+        assertFalse(node.isEmpty());
+        mockStatic.close();
     }
 
 }
