@@ -59,9 +59,25 @@ public class EcommerceHelpdeskServiceClientTest {
         instance.set(null, null);
     }
 
+    private static void setStaticFinalField(
+                                            Field field,
+                                            Object newValue
+    ) throws Exception {
+        field.setAccessible(true);
+
+        // Remove final modifier
+        Field modifiersField = Field.class.getDeclaredField("modifiers");
+        modifiersField.setAccessible(true);
+        modifiersField.setInt(field, field.getModifiers() & ~java.lang.reflect.Modifier.FINAL);
+
+        // Set the new value
+        field.set(null, newValue);
+    }
+
     @Test
-    public void testNodeFetch() throws IOException {
+    public void testNodeFetch() throws Exception {
         mockStatic = mockStatic(HttpClients.class);
+        setStaticFinalField(EcommerceHelpdeskServiceClient.class.getDeclaredField("API_KEY"), "API_KEY");
 
         CloseableHttpClient workingHttpClient = mock(CloseableHttpClient.class);
         CloseableHttpResponse workingResponse = mock(CloseableHttpResponse.class);
