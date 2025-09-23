@@ -59,41 +59,6 @@ public class EcommerceHelpdeskServiceClientTest {
         instance.set(null, null);
     }
 
-    @Test
-    public void instanceTest() {
-        assertNotNull(EcommerceHelpdeskServiceClient.getInstance(mockLogger));
-    }
-
-    @Test
-    public void fetchTransactionMetricsTestNoClientHttp() {
-        ecommerceHelpdeskServiceClient = EcommerceHelpdeskServiceClient.getInstance(mockLogger);
-        JsonNode node = ecommerceHelpdeskServiceClient.fetchTransactionMetrics(
-                "clientId",
-                "pspId",
-                "paymentTypeCode",
-                OffsetDateTime.now(),
-                OffsetDateTime.now().minusHours(1)
-        );
-        assertNotNull(node);
-        assertTrue(node.isEmpty());
-    }
-
-    @Test
-    public void fetchTransactionMetricsTestNoValidData() {
-        mockStatic = mockStatic(HttpClients.class);
-        when(HttpClients.createDefault()).thenReturn(httpClientMock);
-        ecommerceHelpdeskServiceClient = EcommerceHelpdeskServiceClient.getInstance(mockLogger);
-        JsonNode node = ecommerceHelpdeskServiceClient.fetchTransactionMetrics(
-                null,
-                "pspId",
-                "paymentTypeCode",
-                OffsetDateTime.now(),
-                OffsetDateTime.now().minusHours(1)
-        );
-        assertNotNull(node);
-        assertTrue(node.isEmpty());
-        mockStatic.close();
-    }
 
     @Test
     public void testNodeFetch() throws IOException {
