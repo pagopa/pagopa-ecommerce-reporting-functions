@@ -133,4 +133,58 @@ class TransactionStatusAggregationServiceTest {
         // Verify the size of the map (should only contain the non-zero statuses)
         assertEquals(2, counts.size());
     }
+
+    @Test
+    void testAggregateStatusCountByClientAndPaymentTypeAggregatesIntoCategories() {
+        // Given
+        LocalDate startDate = LocalDate.of(2025, 9, 1);
+        LocalDate endDate = LocalDate.of(2025, 9, 1);
+        String partitionKey = "2025-09-01";
+
+        TableEntity entity = new TableEntity(partitionKey, "row1");
+        entity.addProperty("clientId", "clientA");
+        entity.addProperty("pspId", "pspX"); // will be ignored in new grouping
+        entity.addProperty("paymentTypeCode", "PT1");
+
+        // raw statuses -> categories
+        entity.addProperty("ACTIVATED", 5); // IN CORSO
+        entity.addProperty("CANCELED", 2); // ABBANDONATO
+        entity.addProperty("NOTIFIED_OK", 3); // OK
+        entity.addProperty("UNAUTHORIZED", 4); // KO
+        entity.addProperty("CLOSED", 0); // IN CORSO but should be filtered out
+
+        Iterable<TableEntity> iterable = List.of(entity);
+
+        // Mocking the PagedIterable with an iterator
+        PagedIterable<TableEntity> pagedEntities = mock(PagedIterable.class);
+        when(pagedEntities.iterator()).thenReturn(iterable.iterator());
+
+        when(mockTableClient.listEntities(any(ListEntitiesOptions.class), isNull(), isNull()))
+                .thenReturn(pagedEntities);
+
+        // When
+        List<AggregatedStatusGroup> result = service
+                .aggregateStatusCountByClientAndPaymentType(startDate, endDate, mockLogger);
+
+        // Then
+        assertEquals(1, result.size());
+
+        AggregatedStatusGroup group = result.get(0);
+        assertEquals("clientA", group.getClientId());
+        assertEquals("PT1", group.getPaymentTypeCode());
+
+        Map<String, Integer> counts = group.getStatusCounts();
+
+        // Verify category aggregation
+        assertEquals(5, counts.get("IN CORSO")); // ACTIVATED
+        assertEquals(2, counts.get("ABBANDONATO")); // CANCELED
+        assertEquals(3, counts.get("OK")); // NOTIFIED_OK
+        assertEquals(4, counts.get("KO")); // UNAUTHORIZED
+
+        // Verify that zero-count statuses are filtered out
+        assertFalse(counts.containsKey("CLOSED"));
+
+        // Verify total categories size (only the non-zero categories remain)
+        assertEquals(4, counts.size());
+    }
 }

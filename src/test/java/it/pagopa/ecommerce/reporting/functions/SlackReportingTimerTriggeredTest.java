@@ -1,12 +1,10 @@
 package it.pagopa.ecommerce.reporting.functions;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.microsoft.azure.functions.ExecutionContext;
 import it.pagopa.ecommerce.reporting.clients.SlackWebhookClient;
 import it.pagopa.ecommerce.reporting.services.TransactionStatusAggregationService;
 import it.pagopa.ecommerce.reporting.utils.AggregatedStatusGroup;
 import it.pagopa.ecommerce.reporting.utils.SlackDateRangeReportMessageUtils;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
@@ -14,7 +12,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -876,5 +873,90 @@ class SlackReportingTimerTriggeredTest {
                 verify(mockScheduler).schedule(any(Runnable.class), anyLong(), any(TimeUnit.class));
             }
         }
+    }
+
+    @Test
+    void shouldSendSlackMessage() throws Exception {
+        when(mockContext.getLogger()).thenReturn(mockLogger);
+        LocalDate fixedToday = LocalDate.of(2025, 9, 23);
+
+        List<AggregatedStatusGroup> mockAggregatedStatuses = List.of(
+                new AggregatedStatusGroup(
+                        "2025-09-16",
+                        "clientA",
+                        "pspX",
+                        "CP",
+                        List.of("OK", "KO", "ABBANDONATO", "IN CORSO", "DA ANALIZZARE")
+                )
+        );
+        String mockEndpoint = "https://hooks.slack-mock.com/services/test/webhook";
+
+        // Ensure there is data to send a Slack message
+        when(mockAggregationService.aggregateStatusCountByDateRange(any(), any(), any()))
+                .thenReturn(mockAggregatedStatuses);
+
+        try (MockedStatic<SlackDateRangeReportMessageUtils> mockedUtils = Mockito
+                .mockStatic(SlackDateRangeReportMessageUtils.class)) {
+            mockedUtils.when(
+                    () -> SlackDateRangeReportMessageUtils.createAggregatedTableWeeklyReport(
+                            anyList(),
+                            any(LocalDate.class),
+                            any(LocalDate.class),
+                            any(Logger.class)
+                    )
+            )
+                    .thenReturn(
+                            new String[] {
+                                    "Test message"
+                            }
+                    );
+
+            TestableSlackReportingTimerTriggered function = new TestableSlackReportingTimerTriggered(
+                    mockEndpoint,
+                    fixedToday,
+                    mockAggregationService,
+                    mockSlackWebhookClient
+            );
+
+            function.runTableReport("timerInfo", mockContext);
+
+            // Slack client should be called at least once
+            verify(mockSlackWebhookClient, atLeastOnce()).postMessageToWebhook("Test message");
+        }
+    }
+
+    @Test
+    void shouldLogAppropriateTableMessages() throws Exception {
+        when(mockContext.getLogger()).thenReturn(mockLogger);
+        LocalDate fixedToday = LocalDate.of(2025, 9, 23);
+
+        List<AggregatedStatusGroup> mockAggregatedStatuses = List.of(
+                new AggregatedStatusGroup(
+                        "2025-09-16",
+                        "clientA",
+                        "pspX",
+                        "CP",
+                        List.of("OK", "KO", "ABBANDONATO", "IN CORSO", "DA ANALIZZARE")
+                )
+        );
+        String mockEndpoint = "https://hooks.slack-mock.com/services/test/webhook";
+
+        when(mockAggregationService.aggregateStatusCountByDateRange(any(), any(), any()))
+                .thenReturn(mockAggregatedStatuses);
+
+        TestableSlackReportingTimerTriggered function = new TestableSlackReportingTimerTriggered(
+                mockEndpoint,
+                fixedToday,
+                mockAggregationService,
+                mockSlackWebhookClient
+        );
+
+        function.runTableReport("timerInfo", mockContext);
+
+        // Use a more flexible regex to match updated logging
+        verify(mockLogger).info(matches("Java Timer trigger .* executed at: .*"));
+        verify(mockLogger).info(contains("results:"));
+        verify(mockLogger).info(contains("Sending 1 table-based messages to Slack"));
+        verify(mockLogger).info(contains("All table messages scheduled successfully"));
     }
 }

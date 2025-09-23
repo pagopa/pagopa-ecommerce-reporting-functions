@@ -89,6 +89,58 @@ public class SlackReportingTimerTriggered {
         logger.info("All messages sent successfully");
     }
 
+    @FunctionName("SlackReportingTableReport")
+    public void runTableReport(
+                               @TimerTrigger(
+                                       name = "slackTableMessageTimerInfo", schedule = "%NCRON_SCHEDULE_SLACK_TABLE_REPORTING%"
+                               ) String timerInfo,
+                               final ExecutionContext context
+    ) throws JsonProcessingException {
+
+        Logger logger = context.getLogger();
+        logger.info("Java Timer trigger SlackReportingTableReport executed at: " + LocalDateTime.now());
+
+        String endpoint = getEnvVariable("ECOMMERCE_SLACK_REPORTING_WEBHOOK_ENDPOINT");
+
+        SlackWebhookClient slackWebhookClient = createSlackWebhookClient(endpoint);
+        LocalDate today = getCurrentDate();
+
+        LocalDate startDate = today.minusWeeks(1).with(DayOfWeek.MONDAY);
+        LocalDate endDate = startDate.with(DayOfWeek.SUNDAY);
+
+        TransactionStatusAggregationService transactionStatusAggregationService = createAggregationService();
+        List<AggregatedStatusGroup> aggregatedStatuses = transactionStatusAggregationService
+                .aggregateStatusCountByClientAndPaymentType(startDate, endDate, logger);
+
+        logger.info(
+                "Start date: " + startDate + " to date: " + endDate +
+                        ", results: " + aggregatedStatuses.size()
+        );
+
+        // Use the new table-based report generator
+        String[] reportMessages = SlackDateRangeReportMessageUtils
+                .createAggregatedTableWeeklyReport(aggregatedStatuses, startDate, endDate, logger);
+
+        logger.info("Sending " + reportMessages.length + " table-based messages to Slack");
+
+        ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+        AtomicInteger index = new AtomicInteger(0);
+
+        for (String reportMessage : reportMessages) {
+            int currentIndex = index.incrementAndGet();
+            TimerTask task = new TimerTask() {
+                @Override
+                public void run() {
+                    logger.info("Sending table message " + currentIndex + " of " + reportMessages.length);
+                    slackWebhookClient.postMessageToWebhook(reportMessage);
+                }
+            };
+            scheduledExecutorService.schedule(task, currentIndex, TimeUnit.SECONDS);
+        }
+
+        logger.info("All table messages scheduled successfully");
+    }
+
     protected LocalDate getDateFromString(
                                           String dateFormat,
                                           LocalDate defaultDate

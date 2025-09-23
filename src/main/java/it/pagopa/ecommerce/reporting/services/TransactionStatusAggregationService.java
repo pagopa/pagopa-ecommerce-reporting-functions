@@ -11,10 +11,7 @@ import it.pagopa.ecommerce.reporting.utils.StatusStorageFields;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.logging.Logger;
 
 /**
@@ -50,6 +47,31 @@ public class TransactionStatusAggregationService {
     public TransactionStatusAggregationService(TableClient tableClient) {
         this.tableClient = tableClient;
     }
+
+    private static final Map<String, String> STATUS_TO_CATEGORY = Map.ofEntries(
+            Map.entry("EXPIRED_NOT_AUTHORIZED", "ABBANDONATO"),
+            Map.entry("CANCELLATION_EXPIRED", "ABBANDONATO"),
+            Map.entry("CANCELED", "ABBANDONATO"),
+
+            Map.entry("CLOSURE_ERROR", "DA ANALIZZARE"),
+            Map.entry("EXPIRED", "DA ANALIZZARE"),
+            Map.entry("REFUND_ERROR", "DA ANALIZZARE"),
+            Map.entry("NOTIFICATION_ERROR", "DA ANALIZZARE"),
+
+            Map.entry("NOTIFIED_KO", "KO"),
+            Map.entry("REFUNDED", "KO"),
+            Map.entry("UNAUTHORIZED", "KO"),
+
+            Map.entry("NOTIFIED_OK", "OK"),
+
+            Map.entry("ACTIVATED", "IN CORSO"),
+            Map.entry("AUTHORIZATION_REQUESTED", "IN CORSO"),
+            Map.entry("AUTHORIZATION_COMPLETED", "IN CORSO"),
+            Map.entry("CLOSED", "IN CORSO"),
+            Map.entry("NOTIFICATION_REQUESTED", "IN CORSO"),
+            Map.entry("REFUND_REQUESTED", "IN CORSO"),
+            Map.entry("CANCELLATION_REQUESTED", "IN CORSO")
+    );
 
     /**
      * Aggregates the status counts for transactions in a specified date range.
@@ -122,6 +144,68 @@ public class TransactionStatusAggregationService {
         }
 
         logger.info("[aggregateStatusCountByDateRange] Aggregation transaction status completed.");
+        return aggregated;
+    }
+
+    public List<AggregatedStatusGroup> aggregateStatusCountByClientAndPaymentType(
+                                                                                  LocalDate startDate,
+                                                                                  LocalDate endDate,
+                                                                                  Logger logger
+    ) {
+        logger.info("[aggregateStatusCountByClientAndPaymentType] Execution started.");
+
+        Map<String, AggregatedStatusGroup> aggregatedMap = new HashMap<>();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+        for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
+            String partitionKey = formatter.format(date);
+
+            PagedIterable<TableEntity> entities = tableClient.listEntities(
+                    new ListEntitiesOptions().setFilter(String.format("PartitionKey eq '%s'", partitionKey)),
+                    null,
+                    null
+            );
+
+            for (TableEntity entity : entities) {
+                String clientId = String.valueOf(entity.getProperty("clientId"));
+                String paymentType = String.valueOf(entity.getProperty("paymentTypeCode"));
+
+                // new key: client + paymentType
+                String key = String.join("|", clientId, paymentType);
+
+                AggregatedStatusGroup group = aggregatedMap.get(key);
+                if (group == null) {
+                    group = new AggregatedStatusGroup(
+                            null, // no longer grouping by date
+                            clientId,
+                            null, // pspId not needed anymore
+                            paymentType,
+                            new ArrayList<>(Set.of("ABBANDONATO", "DA ANALIZZARE", "KO", "OK", "IN CORSO"))
+                    );
+                    aggregatedMap.put(key, group);
+                }
+
+                for (String rawStatus : StatusStorageFields.values) {
+                    Object raw = entity.getProperty(rawStatus);
+                    int count = raw != null ? Integer.parseInt(raw.toString()) : 0;
+
+                    if (count > 0) {
+                        String category = STATUS_TO_CATEGORY.get(rawStatus);
+                        if (category != null) {
+                            group.incrementStatus(category, count);
+                        }
+                    }
+                }
+            }
+        }
+
+        List<AggregatedStatusGroup> aggregated = new ArrayList<>(aggregatedMap.values());
+
+        for (AggregatedStatusGroup group : aggregated) {
+            group.filterZeroCountStatuses();
+        }
+
+        logger.info("[aggregateStatusCountByClientAndPaymentType] Aggregation completed.");
         return aggregated;
     }
 }

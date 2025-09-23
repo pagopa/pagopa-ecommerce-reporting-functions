@@ -100,6 +100,55 @@ public class SlackDateRangeReportMessageUtils {
         return messages.toArray(new String[0]);
     }
 
+    public static String[] createAggregatedTableWeeklyReport(
+                                                             List<AggregatedStatusGroup> aggregatedGroups,
+                                                             LocalDate startDate,
+                                                             LocalDate endDate,
+                                                             Logger logger
+    ) throws JsonProcessingException {
+
+        if (aggregatedGroups == null || aggregatedGroups.isEmpty()) {
+            logger.info("No aggregated groups to report");
+            return new String[] {
+                    createEmptyReportMessage(startDate, endDate)
+            };
+        }
+
+        List<AggregatedStatusGroup> sortedGroups = sortAggregatedGroups(aggregatedGroups);
+        String formattedStartDate = formatDate(startDate);
+        String formattedEndDate = formatDate(endDate);
+
+        // Build table blocks
+        List<Map<String, Object>> tableBlocks = createTableBlocks(sortedGroups);
+
+        // Split blocks into multiple messages if needed
+        List<String> messages = new ArrayList<>();
+        int start = 0;
+        while (start < tableBlocks.size()) {
+            List<Map<String, Object>> messageBlocks = new ArrayList<>();
+
+            // Add header, image, divider to each message
+            messageBlocks.add(createHeaderBlock(formattedStartDate, formattedEndDate));
+            messageBlocks.add(createImageBlock());
+            messageBlocks.add(createHeaderDescriptionBlock(formattedStartDate, formattedEndDate));
+            messageBlocks.add(createDivider());
+
+            // Determine how many table blocks can fit in this message
+            int remainingSpace = MAX_BLOCKS_PER_MESSAGE - messageBlocks.size();
+            int end = Math.min(start + remainingSpace, tableBlocks.size());
+
+            messageBlocks.addAll(tableBlocks.subList(start, end));
+
+            Map<String, Object> message = Map.of("blocks", messageBlocks);
+            messages.add(OBJECT_MAPPER.writeValueAsString(message));
+
+            start = end;
+        }
+
+        logger.info("Created " + messages.size() + " Slack messages");
+        return messages.toArray(new String[0]);
+    }
+
     /**
      * Creates an empty report message when no data is available.
      */
@@ -342,5 +391,82 @@ public class SlackDateRangeReportMessageUtils {
 
         block.put("text", text);
         return block;
+    }
+
+    static List<Map<String, Object>> createTableBlocks(List<AggregatedStatusGroup> groups) {
+        List<Map<String, Object>> blocks = new ArrayList<>();
+
+        StringBuilder sb = new StringBuilder();
+        int currentBlockCount = 0;
+
+        // Header row for table
+        String header = "*METODO*    *OK*       *KO*      *ABBANDONATO*   *IN CORSO*   *DA ANALIZZARE*\n";
+
+        for (AggregatedStatusGroup group : groups) {
+            if (currentBlockCount >= 35) {
+                // 35 to leave space for header/divider/other blocks in message
+                // Flush current block
+                Map<String, Object> block = Map.of(
+                        "type",
+                        "section",
+                        "text",
+                        Map.of("type", "mrkdwn", "text", "```" + sb.toString() + "```")
+                );
+                blocks.add(block);
+
+                sb = new StringBuilder();
+                currentBlockCount = 0;
+            }
+
+            if (sb.length() == 0) {
+                sb.append(header); // Add header at top of each new block
+            }
+
+            String metodo = group.getPaymentTypeCode();
+            int total = group.getStatusCounts().values().stream().mapToInt(Integer::intValue).sum();
+
+            String ok = formatPercentCount(group.getStatusCounts().get("OK"), total);
+            String ko = formatPercentCount(group.getStatusCounts().get("KO"), total);
+            String abbandonato = formatPercentCount(group.getStatusCounts().get("ABBANDONATO"), total);
+            String inCorso = formatPercentCount(group.getStatusCounts().get("IN CORSO"), total);
+            String daAnalizzare = formatPercentCount(group.getStatusCounts().get("DA ANALIZZARE"), total);
+
+            sb.append(
+                    String.format(
+                            "%-10s %-10s %-10s %-14s %-10s %-14s\n",
+                            metodo,
+                            ok,
+                            ko,
+                            abbandonato,
+                            inCorso,
+                            daAnalizzare
+                    )
+            );
+
+            currentBlockCount++;
+        }
+
+        // Add remaining content as block
+        if (sb.length() > 0) {
+            Map<String, Object> block = Map.of(
+                    "type",
+                    "section",
+                    "text",
+                    Map.of("type", "mrkdwn", "text", "```" + sb.toString() + "```")
+            );
+            blocks.add(block);
+        }
+
+        return blocks;
+    }
+
+    private static String formatPercentCount(
+                                             Integer count,
+                                             int total
+    ) {
+        if (count == null || total == 0)
+            return "0% (0)";
+        int percent = (int) Math.round((count * 100.0) / total);
+        return percent + "% (" + count + ")";
     }
 }
