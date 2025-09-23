@@ -59,7 +59,6 @@ public class EcommerceHelpdeskServiceClientTest {
         instance.set(null, null);
     }
 
-
     @Test
     public void testNodeFetch() throws IOException {
         mockStatic = mockStatic(HttpClients.class);

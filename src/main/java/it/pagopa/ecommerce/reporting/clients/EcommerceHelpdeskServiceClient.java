@@ -39,7 +39,9 @@ public class EcommerceHelpdeskServiceClient {
         if (!isValid(clientId, "Client ID") || !isValid(pspId, "PSP ID")
                 || !isValid(paymentTypeCode, "PaymentTypeCode") || !isValid(startDate, "startDate")
                 || !isValid(endDate, "endDate") || !isValid(API_KEY, "Subscription Key")) {
-            System.out.println("Something is empty");
+            System.out.println(
+                    "Something is empty: " + paymentTypeCode + "-" + startDate + "-" + endDate + "-" + API_KEY
+            );
             return objectMapper.createObjectNode();
         }
         logger.warning(
