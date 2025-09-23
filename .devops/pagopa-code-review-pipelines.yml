@@ -51,7 +51,7 @@ steps:
       jdkVersionOption: '17'
       publishJUnitResults: true
       testResultsFiles: '**/surefire-reports/TEST-*.xml'
-      goals: 'clean verify'
+      goals: 'clean verify -X'
       sonarQubeRunAnalysis: true
       codeCoverageToolOption: 'JaCoCo'
       effectivePomSkip: false
