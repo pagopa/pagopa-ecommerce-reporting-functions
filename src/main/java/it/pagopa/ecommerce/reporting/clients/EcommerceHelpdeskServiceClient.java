@@ -48,9 +48,6 @@ public class EcommerceHelpdeskServiceClient {
         if (!isValid(clientId, "Client ID") || !isValid(pspId, "PSP ID")
                 || !isValid(paymentTypeCode, "PaymentTypeCode") || !isValid(startDate, "startDate")
                 || !isValid(endDate, "endDate") || !isValid(apiKey(), "Subscription Key")) {
-            System.out.println(
-                    "Something is empty: " + paymentTypeCode + "-" + startDate + "-" + endDate + "-" + apiKey()
-            );
             return objectMapper.createObjectNode();
         }
         logger.warning(
@@ -73,7 +70,6 @@ public class EcommerceHelpdeskServiceClient {
             }
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Failed to fetch transaction details", e);
-            System.out.println("I am trying to guess where if it fails here from code review..." + e);
             return objectMapper.createObjectNode();
         }
     }
