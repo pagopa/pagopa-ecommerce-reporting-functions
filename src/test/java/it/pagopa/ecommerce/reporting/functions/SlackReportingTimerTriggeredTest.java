@@ -110,7 +110,8 @@ class SlackReportingTimerTriggeredTest {
                             anyList(),
                             any(LocalDate.class),
                             any(LocalDate.class),
-                            any(Logger.class)
+                            any(Logger.class),
+                            any()
                     )
             ).thenReturn(
                     new String[] {
@@ -169,7 +170,8 @@ class SlackReportingTimerTriggeredTest {
                             anyList(),
                             any(LocalDate.class),
                             any(LocalDate.class),
-                            any(Logger.class)
+                            any(Logger.class),
+                            any()
                     )
             ).thenReturn(
                     new String[] {
@@ -260,7 +262,7 @@ class SlackReportingTimerTriggeredTest {
             mockedUtils
                     .when(
                             () -> SlackDateRangeReportMessageUtils
-                                    .createAggregatedTableWeeklyReport(anyList(), any(), any(), any())
+                                    .createAggregatedTableWeeklyReport(anyList(), any(), any(), any(), any())
                     )
                     .thenReturn(
                             new String[] {

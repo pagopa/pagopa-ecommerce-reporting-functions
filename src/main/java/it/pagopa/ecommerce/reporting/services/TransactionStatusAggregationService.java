@@ -205,7 +205,14 @@ public class TransactionStatusAggregationService {
             group.filterZeroCountStatuses();
         }
 
-        logger.info("[aggregateStatusCountByClientAndPaymentType] Aggregation completed.");
-        return aggregated;
+        logger.info("[aggregateStatusCountByClientAndPaymentType] Aggregation completed " + aggregated.size());
+        // TODO: remove if we also want all 0s rows
+        List<AggregatedStatusGroup> filteredAggregated = aggregated.stream()
+                .filter(aggregatedStatusGroup -> !aggregatedStatusGroup.getStatusCounts().isEmpty())
+                .toList();
+
+        logger.info("[aggregateStatusCountByClientAndPaymentType] Aggregation filtered " + filteredAggregated.size());
+
+        return filteredAggregated;
     }
 }
