@@ -58,9 +58,6 @@ public class SlackReportingTimerTriggered {
         List<AggregatedStatusGroup> aggregatedStatuses = transactionStatusAggregationService
                 .aggregateStatusCountByClientAndPaymentType(startDate, endDate, logger);
 
-        logger.info("GROUP!!");
-        logger.info(aggregatedStatuses.get(0).toString());
-
         logger.info(
                 "Start date: " + startDate + " to date: " + endDate +
                         ", results: " + aggregatedStatuses.size()
