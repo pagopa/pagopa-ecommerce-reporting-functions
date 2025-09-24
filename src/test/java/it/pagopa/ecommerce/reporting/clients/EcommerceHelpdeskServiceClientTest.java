@@ -12,6 +12,7 @@ import org.apache.http.impl.client.HttpClients;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junitpioneer.jupiter.SetEnvironmentVariable;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -108,4 +109,61 @@ public class EcommerceHelpdeskServiceClientTest {
         mockStatic.close();
     }
 
+    @Test
+    @SetEnvironmentVariable(key = "HELPDESK_SERVICE_URI", value = "http://localhost:8080")
+    @SetEnvironmentVariable(key = "HELPDESK_SERVICE_API_ENDPOINT", value = "/transactions")
+    @SetEnvironmentVariable(key = "HELPDESK_SERVICE_API_KEY", value = "test-key")
+    void testInvalidParametersReturnEmptyJson() {
+        EcommerceHelpdeskServiceClient client = EcommerceHelpdeskServiceClient.getInstance(mockLogger);
+
+        // pass invalid params (empty clientId, etc.)
+        JsonNode result = client.fetchTransactionMetrics(
+                "",
+                "psp123",
+                "PTC",
+                OffsetDateTime.now(),
+                OffsetDateTime.now()
+        );
+
+        // since clientId is invalid, we expect an empty object node
+        assertEquals("{}", result.toString());
+    }
+
+    @Test
+    @SetEnvironmentVariable(key = "HELPDESK_SERVICE_URI", value = "http://localhost:8080")
+    @SetEnvironmentVariable(key = "HELPDESK_SERVICE_API_ENDPOINT", value = "/transactions")
+    @SetEnvironmentVariable(key = "HELPDESK_SERVICE_API_KEY", value = "test-key")
+    void testHttpPostLinesCovered() throws Exception {
+        // Mock static HttpClients
+        mockStatic = mockStatic(HttpClients.class);
+        when(HttpClients.createDefault()).thenReturn(httpClientMock);
+
+        // Mock HTTP response
+        when(httpClientMock.execute(any(HttpPost.class))).thenReturn(httpResponseMock);
+        when(httpResponseMock.getEntity()).thenReturn(new StringEntity("{\"status\":\"ok\"}", StandardCharsets.UTF_8));
+
+        ecommerceHelpdeskServiceClient = EcommerceHelpdeskServiceClient.getInstance(mockLogger);
+
+        JsonNode node = ecommerceHelpdeskServiceClient.fetchTransactionMetrics(
+                "clientId",
+                "pspId",
+                "paymentTypeCode",
+                OffsetDateTime.now(),
+                OffsetDateTime.now().minusHours(1)
+        );
+
+        // Verify response
+        assertNotNull(node);
+        assertEquals("ok", node.get("status").asText());
+
+        // Capture the HttpPost to verify URI and header
+        ArgumentCaptor<HttpPost> httpPostCaptor = ArgumentCaptor.forClass(HttpPost.class);
+        verify(httpClientMock).execute(httpPostCaptor.capture());
+        HttpPost capturedPost = httpPostCaptor.getValue();
+
+        assertEquals("http://localhost:8080/transactions", capturedPost.getURI().toString());
+        assertEquals("test-key", capturedPost.getFirstHeader("ocp-apim-subscription-key").getValue());
+
+        mockStatic.close();
+    }
 }
