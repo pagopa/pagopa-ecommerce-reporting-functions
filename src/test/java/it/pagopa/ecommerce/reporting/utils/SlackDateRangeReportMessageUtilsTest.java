@@ -24,14 +24,6 @@ class SlackDateRangeReportMessageUtilsTest {
     @Mock
     private Logger mockLogger;
 
-    private boolean rowContainsText(
-                                    List<Map<String, Object>> row,
-                                    String value
-    ) {
-        return row.stream()
-                .anyMatch(cell -> value.equals(cell.get("text")));
-    }
-
     @Test
     void shouldFormatDateInItalianLocale() {
         // Given
@@ -106,48 +98,56 @@ class SlackDateRangeReportMessageUtilsTest {
     }
 
     @Test
-    void shouldSortByActivatedCountDescending() {
+    void shouldFilterByClientIdAndSortByActivated() {
         // Given
-        List<AggregatedStatusGroup> groups = new ArrayList<>();
-
         AggregatedStatusGroup group1 = new AggregatedStatusGroup(
-                "2023-01-01",
-                "client1",
-                "psp1",
-                "CP",
-                Arrays.asList("ACTIVATED", "NOTIFIED_OK")
+                "2025-09-16", "clientA", "pspX", "CP",
+                List.of("OK", "KO")
         );
-        group1.incrementStatus("ACTIVATED", 50);
+        group1.incrementStatus("ACTIVATED", 5);
+        group1.incrementStatus("FAILED", 2);
 
         AggregatedStatusGroup group2 = new AggregatedStatusGroup(
-                "2023-01-01",
-                "client2",
-                "psp2",
-                "PPAL",
-                Arrays.asList("ACTIVATED", "NOTIFIED_OK")
+                "2025-09-16", "clientA", "pspY", "CP",
+                List.of("OK", "KO")
         );
-        group2.incrementStatus("ACTIVATED", 100);
+        group2.incrementStatus("ACTIVATED", 10);
+        group2.incrementStatus("KO", 1);
 
         AggregatedStatusGroup group3 = new AggregatedStatusGroup(
-                "2023-01-01",
-                "client3",
-                "psp3",
-                "CP",
-                Arrays.asList("ACTIVATED", "NOTIFIED_OK")
+                "2025-09-16", "clientB", "pspZ", "CP",
+                List.of("OK", "KO")
         );
-        group3.incrementStatus("ACTIVATED", 25);
+        group3.incrementStatus("ACTIVATED", 7);
 
-        groups.add(group1);
-        groups.add(group2);
-        groups.add(group3);
+        List<AggregatedStatusGroup> groups = List.of(group1, group2, group3);
 
         // When
-        List<AggregatedStatusGroup> result = SlackDateRangeReportMessageUtils.sortAggregatedGroups(groups, "client1");
+        List<AggregatedStatusGroup> sorted = SlackDateRangeReportMessageUtils.sortAggregatedGroups(groups, "clientA");
 
         // Then
-        assertEquals("client2", result.get(0).getClientId()); // 100
-        assertEquals("client1", result.get(1).getClientId()); // 50
-        assertEquals("client3", result.get(2).getClientId()); // 25
+        // Only clientA groups
+        assertEquals(2, sorted.size());
+        assertTrue(sorted.stream().allMatch(g -> "clientA".equals(g.getClientId())));
+
+        // Sorted descending by ACTIVATED
+        assertEquals(10, sorted.get(0).getStatusCounts().get("ACTIVATED"));
+        assertEquals(5, sorted.get(1).getStatusCounts().get("ACTIVATED"));
+    }
+
+    @Test
+    void shouldReturnEmptyListIfNoClientMatches() {
+        // Given
+        AggregatedStatusGroup group = new AggregatedStatusGroup(
+                "2025-09-16", "clientB", "pspX", "CP", List.of("OK")
+        );
+        group.incrementStatus("ACTIVATED", 3);
+
+        // When
+        List<AggregatedStatusGroup> sorted = SlackDateRangeReportMessageUtils.sortAggregatedGroups(List.of(group), "clientA");
+
+        // Then
+        assertTrue(sorted.isEmpty(), "No groups should be returned for unmatched clientId");
     }
 
     @Test

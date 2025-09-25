@@ -21,6 +21,18 @@ public class SlackDateRangeReportMessageUtils {
     private static final String PAGOPA_LOGO_URL = "https://selfcare.pagopa.it/assets/logo_pagopacorp.png";
     private static final int MAX_BLOCKS_PER_MESSAGE = 40; // Reduced from 49 for safety
 
+    /**
+     * Creates an aggregated weekly report message for Slack, split into multiple
+     * messages with a maximum blocks size each.
+     *
+     * @param aggregatedGroups List of aggregated status groups
+     * @param startDate        Report start date
+     * @param endDate          Report end date
+     * @param logger           Logger instance
+     * @param clientId         Client ID
+     * @return Array of formatted Slack messages in JSON format
+     * @throws JsonProcessingException If JSON conversion fails
+     */
     public static String[] createAggregatedTableWeeklyReport(
                                                              List<AggregatedStatusGroup> aggregatedGroups,
                                                              LocalDate startDate,
