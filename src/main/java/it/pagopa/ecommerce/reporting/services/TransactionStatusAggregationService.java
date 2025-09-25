@@ -96,7 +96,7 @@ public class TransactionStatusAggregationService {
                 String clientId = String.valueOf(entity.getProperty("clientId"));
                 String paymentType = String.valueOf(entity.getProperty("paymentTypeCode"));
 
-                // new key: client + paymentType
+                // key: client + paymentType
                 String key = String.join("|", clientId, paymentType);
 
                 AggregatedStatusGroup group = aggregatedMap.get(key);

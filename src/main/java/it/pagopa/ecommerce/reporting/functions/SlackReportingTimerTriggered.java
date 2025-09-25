@@ -104,7 +104,6 @@ public class SlackReportingTimerTriggered {
                 @Override
                 public void run() {
                     logger.info("Sending message " + report);
-                    System.out.println("Sending message system " + report);
                     logger.info(
                             "Sending table message " + currentIndex + " of " +
                                     reportMessages.size()
