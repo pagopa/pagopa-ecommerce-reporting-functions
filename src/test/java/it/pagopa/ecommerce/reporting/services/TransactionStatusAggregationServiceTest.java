@@ -7,6 +7,10 @@ import com.azure.core.http.rest.PagedIterable;
 import it.pagopa.ecommerce.reporting.utils.AggregatedStatusGroup;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junitpioneer.jupiter.SetEnvironmentVariable;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
 import java.util.*;
@@ -15,11 +19,15 @@ import java.util.logging.Logger;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+@ExtendWith(MockitoExtension.class)
 class TransactionStatusAggregationServiceTest {
 
     private TableClient mockTableClient;
     private Logger mockLogger;
     private TransactionStatusAggregationService service;
+
+    @Mock
+    private PagedIterable<TableEntity> mockPagedIterable;
 
     @BeforeEach
     void setUp() {
@@ -29,109 +37,133 @@ class TransactionStatusAggregationServiceTest {
     }
 
     @Test
-    void testAggregateStatusCountByDateRange() {
+    void testAggregateStatusCountByClientAndPaymentType() {
         // Given
-        LocalDate startDate = LocalDate.of(2024, 4, 1);
-        LocalDate endDate = LocalDate.of(2024, 4, 1);
-        String partitionKey = "2024-04-01";
+        LocalDate startDate = LocalDate.of(2025, 9, 1);
+        LocalDate endDate = LocalDate.of(2025, 9, 1);
 
-        TableEntity entityFirst = new TableEntity(partitionKey, "row1");
-        entityFirst.addProperty("clientId", "clientA");
-        entityFirst.addProperty("pspId", "pspX");
-        entityFirst.addProperty("paymentTypeCode", "PT1");
-        entityFirst.addProperty("ACTIVATED", 3);
-        entityFirst.addProperty("CLOSED", 1);
-        entityFirst.addProperty("NOTIFIED_OK", 2);
-
-        TableEntity entitySecond = new TableEntity(partitionKey, "row1");
-        entitySecond.addProperty("clientId", "clientA");
-        entitySecond.addProperty("pspId", "pspX");
-        entitySecond.addProperty("paymentTypeCode", "PT1");
-        entitySecond.addProperty("ACTIVATED", 3);
-        entitySecond.addProperty("CLOSED", 5);
-        entitySecond.addProperty("NOTIFIED_OK", 9);
-
-        Iterable<TableEntity> iterable = List.of(entityFirst, entitySecond);
-
-        // Mocking the PagedIterable with simple iterator
-        PagedIterable<TableEntity> pagedEntities = mock(PagedIterable.class);
-        when(pagedEntities.iterator()).thenReturn(iterable.iterator());
-
-        when(mockTableClient.listEntities(any(ListEntitiesOptions.class), isNull(), isNull()))
-                .thenReturn(pagedEntities);
-
-        // When
-        List<AggregatedStatusGroup> result = service.aggregateStatusCountByDateRange(startDate, endDate, mockLogger);
-
-        // Then
-        assertEquals(1, result.size());
-
-        AggregatedStatusGroup group = result.get(0);
-        assertEquals("2024-04-01", group.getDate());
-        assertEquals("clientA", group.getClientId());
-        assertEquals("pspX", group.getPspId());
-        assertEquals("PT1", group.getPaymentTypeCode());
-
-        Map<String, Integer> counts = group.getStatusCounts();
-        assertEquals(6, counts.get("ACTIVATED"));
-        assertEquals(6, counts.get("CLOSED"));
-        assertEquals(11, counts.get("NOTIFIED_OK"));
-
-        // EXPIRED shouldn't be in the map (0 occurrences)
-        assertFalse(counts.containsKey("EXPIRED"));
-    }
-
-    @Test
-    void testAggregateStatusCountByDateRangeFiltersZeroCounts() {
-        // Given
-        LocalDate startDate = LocalDate.of(2024, 4, 1);
-        LocalDate endDate = LocalDate.of(2024, 4, 1);
-        String partitionKey = "2024-04-01";
-
-        TableEntity entity = new TableEntity(partitionKey, "row1");
+        TableEntity entity = new TableEntity("2025-09-01", "row1");
         entity.addProperty("clientId", "clientA");
         entity.addProperty("pspId", "pspX");
         entity.addProperty("paymentTypeCode", "PT1");
-        entity.addProperty("ACTIVATED", 5);
+        entity.addProperty("ACTIVATED", 5); // IN CORSO
+        entity.addProperty("CANCELED", 2); // ABBANDONATO
+        entity.addProperty("NOTIFIED_OK", 3); // OK
+        entity.addProperty("UNAUTHORIZED", 4); // KO
         entity.addProperty("CLOSED", 0);
-        entity.addProperty("NOTIFIED_OK", 3);
-        entity.addProperty("EXPIRED", 0);
 
-        Iterable<TableEntity> iterable = List.of(entity);
+        List<TableEntity> entities = List.of(entity);
 
-        // Mocking the PagedIterable with an iterator
-        PagedIterable<TableEntity> pagedEntities = mock(PagedIterable.class);
-        when(pagedEntities.iterator()).thenReturn(iterable.iterator());
-
+        when(mockPagedIterable.iterator()).thenReturn(entities.iterator());
         when(mockTableClient.listEntities(any(ListEntitiesOptions.class), isNull(), isNull()))
-                .thenReturn(pagedEntities);
+                .thenReturn(mockPagedIterable);
 
         // When
-        List<AggregatedStatusGroup> result = service.aggregateStatusCountByDateRange(startDate, endDate, mockLogger);
+        List<AggregatedStatusGroup> result = service
+                .aggregateStatusCountByClientAndPaymentType(startDate, endDate, mockLogger);
 
         // Then
         assertEquals(1, result.size());
 
         AggregatedStatusGroup group = result.get(0);
-        assertEquals("2024-04-01", group.getDate());
         assertEquals("clientA", group.getClientId());
-        assertEquals("pspX", group.getPspId());
         assertEquals("PT1", group.getPaymentTypeCode());
+        assertNull(group.getDate()); // Date should be null for this aggregation
+        assertNull(group.getPspId()); // PSP should be null for this aggregation
 
         Map<String, Integer> counts = group.getStatusCounts();
+        assertEquals(5, counts.get("IN CORSO"));
+        assertEquals(2, counts.get("ABBANDONATO"));
+        assertEquals(3, counts.get("OK"));
+        assertEquals(4, counts.get("KO"));
+        assertEquals(4, counts.size());
 
-        // Verify that statuses with non-zero counts are present
-        assertTrue(counts.containsKey("ACTIVATED"));
-        assertEquals(5, counts.get("ACTIVATED"));
-        assertTrue(counts.containsKey("NOTIFIED_OK"));
-        assertEquals(3, counts.get("NOTIFIED_OK"));
+        // Verify logging
+        verify(mockLogger, atLeastOnce()).info(contains("aggregateStatusCountByClientAndPaymentType"));
+        verify(mockLogger, atLeastOnce()).info(contains("Aggregation completed"));
+        verify(mockLogger, atLeastOnce()).info(contains("Aggregation filtered"));
+    }
 
-        // Verify that statuses with zero counts are filtered out
-        assertFalse(counts.containsKey("CLOSED"));
-        assertFalse(counts.containsKey("EXPIRED"));
+    @Test
+    void testAggregateStatusCountByClientAndPaymentTypeFiltersEmptyGroups() {
+        // Given
+        LocalDate startDate = LocalDate.of(2025, 9, 1);
+        LocalDate endDate = LocalDate.of(2025, 9, 1);
 
-        // Verify the size of the map (should only contain the non-zero statuses)
+        // Entity with all zero counts
+        TableEntity entityAllZeros = new TableEntity("2025-09-01", "row1");
+        entityAllZeros.addProperty("clientId", "clientEmpty");
+        entityAllZeros.addProperty("pspId", "pspX");
+        entityAllZeros.addProperty("paymentTypeCode", "PT1");
+        entityAllZeros.addProperty("ACTIVATED", 0);
+        entityAllZeros.addProperty("CANCELED", 0);
+        entityAllZeros.addProperty("NOTIFIED_OK", 0);
+
+        // Entity with some counts
+        TableEntity entityWithCounts = new TableEntity("2025-09-01", "row2");
+        entityWithCounts.addProperty("clientId", "clientActive");
+        entityWithCounts.addProperty("pspId", "pspY");
+        entityWithCounts.addProperty("paymentTypeCode", "PT2");
+        entityWithCounts.addProperty("ACTIVATED", 3);
+        entityWithCounts.addProperty("NOTIFIED_OK", 2);
+
+        List<TableEntity> entities = List.of(entityAllZeros, entityWithCounts);
+
+        when(mockPagedIterable.iterator()).thenReturn(entities.iterator());
+        when(mockTableClient.listEntities(any(ListEntitiesOptions.class), isNull(), isNull()))
+                .thenReturn(mockPagedIterable);
+
+        // When
+        List<AggregatedStatusGroup> result = service
+                .aggregateStatusCountByClientAndPaymentType(startDate, endDate, mockLogger);
+
+        // Then
+        assertEquals(1, result.size()); // Only the group with counts should remain
+
+        AggregatedStatusGroup group = result.get(0);
+        assertEquals("clientActive", group.getClientId());
+        assertEquals("PT2", group.getPaymentTypeCode());
+
+        Map<String, Integer> counts = group.getStatusCounts();
+        assertEquals(3, counts.get("IN CORSO"));
+        assertEquals(2, counts.get("OK"));
         assertEquals(2, counts.size());
+    }
+
+    @Test
+    void testAggregateStatusCountByClientAndPaymentTypeUnknownStatus() {
+        // Given
+        LocalDate startDate = LocalDate.of(2025, 9, 1);
+        LocalDate endDate = LocalDate.of(2025, 9, 1);
+
+        TableEntity entity = new TableEntity("2025-09-01", "row1");
+        entity.addProperty("clientId", "clientA");
+        entity.addProperty("pspId", "pspX");
+        entity.addProperty("paymentTypeCode", "PT1");
+        entity.addProperty("UNKNOWN_STATUS", 5); // status is not in the mapping
+        entity.addProperty("ACTIVATED", 3);
+
+        List<TableEntity> entities = List.of(entity);
+
+        when(mockPagedIterable.iterator()).thenReturn(entities.iterator());
+        when(mockTableClient.listEntities(any(ListEntitiesOptions.class), isNull(), isNull()))
+                .thenReturn(mockPagedIterable);
+
+        // When
+        List<AggregatedStatusGroup> result = service
+                .aggregateStatusCountByClientAndPaymentType(startDate, endDate, mockLogger);
+
+        // Then
+        assertEquals(1, result.size());
+        AggregatedStatusGroup group = result.get(0);
+        Map<String, Integer> counts = group.getStatusCounts();
+
+        // Only ACTIVATED should be mapped to "IN CORSO"
+        assertEquals(3, counts.get("IN CORSO"));
+        assertEquals(1, counts.size());
+
+        // UNKNOWN_STATUS should be ignored since it's not in STATUS_TO_CATEGORY mapping
+        assertFalse(counts.containsKey("UNKNOWN_STATUS"));
     }
 
     @Test
@@ -155,7 +187,6 @@ class TransactionStatusAggregationServiceTest {
 
         Iterable<TableEntity> iterable = List.of(entity);
 
-        // Mocking the PagedIterable with an iterator
         PagedIterable<TableEntity> pagedEntities = mock(PagedIterable.class);
         when(pagedEntities.iterator()).thenReturn(iterable.iterator());
 
@@ -186,5 +217,16 @@ class TransactionStatusAggregationServiceTest {
 
         // Verify total categories size (only the non-zero categories remain)
         assertEquals(4, counts.size());
+    }
+
+    @Test
+    @SetEnvironmentVariable(
+            key = "ECOMMERCE_REPORTING_CONNECTION_STRING", value = "DefaultEndpointsProtocol=http;AccountName=test;AccountKey=test;BlobEndpoint=http://127.0.0.1:10000/test;QueueEndpoint=http://127.0.0.1:10001/test;TableEndpoint=http://127.0.0.1:10002/test;"
+    )
+    @SetEnvironmentVariable(key = "ECOMMERCE_REPORTING_TABLE", value = "test-table")
+    void testDefaultConstructorWithEnvironmentVariables() {
+        // Test the default constructor that reads from environment variables
+        TransactionStatusAggregationService defaultService = new TransactionStatusAggregationService();
+        assertNotNull(defaultService);
     }
 }
