@@ -7,6 +7,7 @@ import it.pagopa.ecommerce.reporting.utils.AggregatedStatusGroup;
 import it.pagopa.ecommerce.reporting.utils.SlackDateRangeReportMessageUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junitpioneer.jupiter.SetEnvironmentVariable;
 import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -247,6 +248,7 @@ class SlackReportingTimerTriggeredTest {
         assertThrows(NullPointerException.class, () -> function.run("timerInfo", mockContext));
     }
 
+    @SetEnvironmentVariable(key = "ECOMMERCE_CLIENTS_LIST", value = "[\"CLIENT_1\",\"CLIENT2\"]")
     @Test
     void shouldScheduleTasksWithCorrectDelays() throws Exception {
         when(mockContext.getLogger()).thenReturn(mockLogger);

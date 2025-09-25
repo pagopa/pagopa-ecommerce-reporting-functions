@@ -8,15 +8,19 @@ import com.microsoft.azure.functions.annotation.TimerTrigger;
 import it.pagopa.ecommerce.reporting.clients.SlackWebhookClient;
 import it.pagopa.ecommerce.reporting.services.TransactionStatusAggregationService;
 import it.pagopa.ecommerce.reporting.utils.AggregatedStatusGroup;
+import it.pagopa.ecommerce.reporting.utils.MapParametersUtils;
 import it.pagopa.ecommerce.reporting.utils.SlackDateRangeReportMessageUtils;
 
 import java.time.*;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.TimerTask;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import java.util.logging.Logger;
 
 /**
@@ -43,6 +47,11 @@ public class SlackReportingTimerTriggered {
         String reportStartDate = getEnvVariable("REPORT_START_DATE");
         String reportEndDate = getEnvVariable("REPORT_END_DATE");
 
+        Set<String> ecommerceClientList = MapParametersUtils
+                .parseSetString(System.getenv("ECOMMERCE_CLIENTS_LIST")).fold(exception -> {
+                    throw exception;
+                }, Function.identity());
+
         SlackWebhookClient slackWebhookClient = createSlackWebhookClient(endpoint);
         LocalDate today = getCurrentDate();
 
@@ -63,52 +72,46 @@ public class SlackReportingTimerTriggered {
                         ", results: " + aggregatedStatuses.size()
         );
 
-        /*
-         * TODO: riportare ad un codice che prende i clientID da ECOMMERCE_CLIENTS_LIST
-         */
         // Create the report messages
-        String[] reportMessagesCheckout = SlackDateRangeReportMessageUtils
-                .createAggregatedTableWeeklyReport(aggregatedStatuses, startDate, endDate, logger, "CHECKOUT");
+        List<String> reportMessages = new java.util.ArrayList<>(List.of(""));
 
-        String[] reportMessagesIO = SlackDateRangeReportMessageUtils
-                .createAggregatedTableWeeklyReport(aggregatedStatuses, startDate, endDate, logger, "IO");
+        for (String client : ecommerceClientList) {
+            String[] reportMessage = SlackDateRangeReportMessageUtils
+                    .createAggregatedTableWeeklyReport(aggregatedStatuses, startDate, endDate, logger, client);
+            reportMessages.addAll(Arrays.asList(reportMessage));
+        }
+        reportMessages.removeIf(String::isBlank);
 
-        logger.info("Sending for checkout " + reportMessagesCheckout.length + " table-based messages to Slack");
-        logger.info("Sending for IO " + reportMessagesIO.length + " table-based messages to Slack");
+        logger.info("Sending " + reportMessages.size() + " table-based messages to Slack");
 
         ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
         AtomicInteger index = new AtomicInteger(0);
-
-        for (String reportMessage : reportMessagesCheckout) {
-            int currentIndex = index.incrementAndGet();
+        String[] initialBlock = SlackDateRangeReportMessageUtils.createInitialBlock(startDate, endDate, logger);
+        for (String block : initialBlock) {
             TimerTask task = new TimerTask() {
                 @Override
                 public void run() {
-                    logger.info("Sending message " + reportMessage);
-                    System.out.println("Sending message system " + reportMessage);
-                    // logger.info("Sending table message " + currentIndex + " of " +
-                    // reportMessages.length);
-                    slackWebhookClient.postMessageToWebhook(reportMessage);
+                    logger.info("Sending message " + block);
+                    slackWebhookClient.postMessageToWebhook(block);
                 }
             };
             scheduledExecutorService.schedule(task, index.get(), TimeUnit.SECONDS);
-
         }
-
-        for (String reportMessage : reportMessagesIO) {
+        for (String report : reportMessages) {
             int currentIndex = index.incrementAndGet();
             TimerTask task = new TimerTask() {
                 @Override
                 public void run() {
-                    logger.info("Sending message " + reportMessage);
-                    System.out.println("Sending message system " + reportMessage);
-                    // logger.info("Sending table message " + currentIndex + " of " +
-                    // reportMessages.length);
-                    slackWebhookClient.postMessageToWebhook(reportMessage);
+                    logger.info("Sending message " + report);
+                    System.out.println("Sending message system " + report);
+                    logger.info(
+                            "Sending table message " + currentIndex + " of " +
+                                    reportMessages.size()
+                    );
+                    slackWebhookClient.postMessageToWebhook(report);
                 }
             };
             scheduledExecutorService.schedule(task, index.get(), TimeUnit.SECONDS);
-
         }
 
         logger.info("All messages sent successfully");

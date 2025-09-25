@@ -178,7 +178,7 @@ class SlackDateRangeReportMessageUtilsTest {
         String endDate = "7 gennaio 2023";
 
         // When
-        Map<String, Object> result = SlackDateRangeReportMessageUtils.createHeaderBlock(startDate, endDate, "");
+        Map<String, Object> result = SlackDateRangeReportMessageUtils.createHeaderBlock(startDate, endDate);
 
         // Then
         assertEquals("header", result.get("type"));

@@ -37,40 +37,43 @@ public class SlackDateRangeReportMessageUtils {
         }
 
         List<AggregatedStatusGroup> sortedGroups = sortAggregatedGroups(aggregatedGroups, clientId);
-        String formattedStartDate = formatDate(startDate);
-        String formattedEndDate = formatDate(endDate);
 
         // Build table blocks
         List<Map<String, Object>> tableBlocks = createTableBlocks(sortedGroups);
 
         // Split blocks into multiple messages if needed
         List<String> messages = new ArrayList<>();
-        int start = 0;
-        while (start < tableBlocks.size()) {
-            List<Map<String, Object>> messageBlocks = new ArrayList<>();
+        List<Map<String, Object>> messageBlocks = new ArrayList<>(tableBlocks);
 
-            // Add header, image, divider to each message
-            /* TODO: portare fuori e stampare una sola volta, rimuovendo il client ID */
-            messageBlocks.add(createHeaderBlock(formattedStartDate, formattedEndDate, clientId));
-            messageBlocks.add(createImageBlock());
-            messageBlocks.add(createHeaderDescriptionBlock(formattedStartDate, formattedEndDate));
-            messageBlocks.add(createDivider());
-
-            // Determine how many table blocks can fit in this message
-            int remainingSpace = MAX_BLOCKS_PER_MESSAGE - messageBlocks.size();
-            int end = Math.min(start + remainingSpace, tableBlocks.size());
-
-            messageBlocks.addAll(tableBlocks.subList(start, end));
-
-            Map<String, Object> message = Map.of("blocks", messageBlocks);
-            messages.add(OBJECT_MAPPER.writeValueAsString(message));
-
-            start = end;
-        }
+        Map<String, Object> message = Map.of("blocks", messageBlocks);
+        messages.add(OBJECT_MAPPER.writeValueAsString(message));
 
         logger.info("Created " + messages.size() + " Slack messages");
         return messages.toArray(new String[0]);
     }
+
+    public static String[] createInitialBlock(
+                                              LocalDate startDate,
+                                              LocalDate endDate,
+                                              Logger logger
+    ) throws JsonProcessingException {
+        String formattedStartDate = formatDate(startDate);
+        String formattedEndDate = formatDate(endDate);
+        List<String> messages = new ArrayList<>();
+        List<Map<String, Object>> messageBlocks = new ArrayList<>();
+
+        // Add header, image, divider to each message
+        messageBlocks.add(createHeaderBlock(formattedStartDate, formattedEndDate));
+        messageBlocks.add(createImageBlock());
+        messageBlocks.add(createHeaderDescriptionBlock(formattedStartDate, formattedEndDate));
+        messageBlocks.add(createDivider());
+
+        Map<String, Object> message = Map.of("blocks", messageBlocks);
+        messages.add(OBJECT_MAPPER.writeValueAsString(message));
+
+        logger.info("Created " + messages.size() + " Slack messages");
+        return messages.toArray(new String[0]);
+    };
 
     /**
      * Creates an empty report message when no data is available.
@@ -84,7 +87,7 @@ public class SlackDateRangeReportMessageUtils {
         String formattedEndDate = formatDate(endDate);
 
         List<Map<String, Object>> blocks = new ArrayList<>();
-        blocks.add(createHeaderBlock(formattedStartDate, formattedEndDate, ""));
+        blocks.add(createHeaderBlock(formattedStartDate, formattedEndDate));
         blocks.add(createImageBlock());
         blocks.add(
                 createTextBlock(
@@ -198,14 +201,14 @@ public class SlackDateRangeReportMessageUtils {
     // Block creation methods
     static Map<String, Object> createHeaderBlock(
                                                  String startDate,
-                                                 String endDate,
-                                                 String clientId
+                                                 String endDate
+
     ) {
         return createTextBlock(
                 "header",
                 "plain_text",
                 SlackMessageConstants.PAGOPA_EMOJI + " Report Settimanale Transazioni " + startDate + " - " + endDate
-                        + " per client " + clientId + " " + SlackMessageConstants.PAGOPA_EMOJI,
+                        + " per client " + SlackMessageConstants.PAGOPA_EMOJI,
                 true
         );
     }
