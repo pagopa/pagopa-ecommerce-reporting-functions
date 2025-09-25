@@ -144,6 +144,7 @@ class SlackReportingTimerTriggeredTest {
         }
     }
 
+    @SetEnvironmentVariable(key = "ECOMMERCE_CLIENTS_LIST", value = "[\"clientA\"]")
     @Test
     void shouldLogAppropriateMessages() throws Exception {
         when(mockContext.getLogger()).thenReturn(mockLogger);
@@ -166,6 +167,18 @@ class SlackReportingTimerTriggeredTest {
 
         try (MockedStatic<SlackDateRangeReportMessageUtils> mockedUtils = Mockito
                 .mockStatic(SlackDateRangeReportMessageUtils.class)) {
+            mockedUtils.when(
+                    () -> SlackDateRangeReportMessageUtils.createInitialBlock(
+                            any(LocalDate.class),
+                            any(LocalDate.class),
+                            any(Logger.class)
+                    )
+            ).thenReturn(
+                    new String[] {
+                            "Initial block message"
+                    }
+            );
+
             mockedUtils.when(
                     () -> SlackDateRangeReportMessageUtils.createAggregatedTableWeeklyReport(
                             anyList(),
