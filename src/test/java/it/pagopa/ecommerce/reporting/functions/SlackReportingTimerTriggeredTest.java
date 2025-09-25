@@ -1,11 +1,9 @@
 package it.pagopa.ecommerce.reporting.functions;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.microsoft.azure.functions.ExecutionContext;
 import it.pagopa.ecommerce.reporting.clients.SlackWebhookClient;
 import it.pagopa.ecommerce.reporting.services.TransactionStatusAggregationService;
 import it.pagopa.ecommerce.reporting.utils.AggregatedStatusGroup;
-import it.pagopa.ecommerce.reporting.utils.MapParametersUtils;
 import it.pagopa.ecommerce.reporting.utils.SlackDateRangeReportMessageUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,14 +11,11 @@ import org.junitpioneer.jupiter.SetEnvironmentVariable;
 import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Function;
 import java.util.logging.Logger;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -342,160 +337,68 @@ class SlackReportingTimerTriggeredTest {
         }
     }
 
-    @SetEnvironmentVariable(key = "ECOMMERCE_CLIENTS_LIST", value = "[\"CLIENT_1\",\"CLIENT2\"]")
     @Test
-    void shouldParseClientListFromEnvironment() {
-        Set<String> ecommerceClientList = MapParametersUtils
-                .parseSetString(System.getenv("ECOMMERCE_CLIENTS_LIST"))
-                .fold(
-                        exception -> {
-                            throw exception;
-                        },
-                        Function.identity()
-                );
+    void shouldReturnLocalDateWhenValidDateString() {
+        LocalDate fixedToday = LocalDate.of(2025, 9, 23);
+        String mockEndpoint = "https://hooks.slack-mock.com/services/test/webhook";
+        TestableSlackReportingTimerTriggered function = new TestableSlackReportingTimerTriggered(
+                mockEndpoint,
+                fixedToday,
+                mockAggregationService,
+                mockSlackWebhookClient
+        );
 
-        assertTrue(ecommerceClientList.contains("CLIENT_1"));
-        assertTrue(ecommerceClientList.contains("CLIENT2"));
-        assertEquals(2, ecommerceClientList.size());
-    }
-
-    @Test
-    @SetEnvironmentVariable(key = "ECOMMERCE_CLIENTS_LIST", value = "[\"CLIENT_1\"]")
-    void shouldBuildReportMessagesForEachClient() {
         // Given
-        List<AggregatedStatusGroup> aggregatedStatuses = new ArrayList<>();
-        LocalDate startDate = LocalDate.of(2025, 9, 23);
-        LocalDate endDate = LocalDate.of(2025, 9, 24);
-        Logger logger = mock(Logger.class);
-        Set<String> ecommerceClientList = Set.of("CLIENT_1");
-        List<String> reportMessages = new ArrayList<>();
-
-        try (MockedStatic<SlackDateRangeReportMessageUtils> utils = Mockito
-                .mockStatic(SlackDateRangeReportMessageUtils.class)) {
-            utils.when(
-                    () -> SlackDateRangeReportMessageUtils.createAggregatedTableWeeklyReport(
-                            anyList(),
-                            eq(startDate),
-                            eq(endDate),
-                            eq(logger),
-                            eq("CLIENT_1")
-                    )
-            )
-                    .thenReturn(
-                            new String[] {
-                                    "msg1",
-                                    "msg2"
-                            }
-                    );
-
-            // When
-            for (String client : ecommerceClientList) {
-                String[] reportMessage = SlackDateRangeReportMessageUtils
-                        .createAggregatedTableWeeklyReport(aggregatedStatuses, startDate, endDate, logger, client);
-                reportMessages.addAll(Arrays.asList(reportMessage));
-            }
-
-            // Then
-            assertEquals(2, reportMessages.size());
-            assertTrue(reportMessages.contains("msg1"));
-            assertTrue(reportMessages.contains("msg2"));
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    @Test
-    void shouldRemoveBlankMessages() {
-        List<String> reportMessages = new ArrayList<>(Arrays.asList("msg1", " ", "", "msg2"));
+        String validDate = "25-09-2025";
+        LocalDate defaultDate = LocalDate.of(2000, 1, 1);
 
         // When
-        reportMessages.removeIf(String::isBlank);
+        LocalDate result = function.getDateFromString(validDate, defaultDate);
 
         // Then
-        assertEquals(2, reportMessages.size());
-        assertTrue(reportMessages.contains("msg1"));
-        assertTrue(reportMessages.contains("msg2"));
+        LocalDate expected = LocalDate.now().withYear(2025).withMonth(9).withDayOfMonth(25);
+        assertEquals(expected, result);
     }
 
     @Test
-    void shouldScheduleInitialBlockMessages() {
-        LocalDate startDate = LocalDate.of(2025, 9, 23);
-        LocalDate endDate = LocalDate.of(2025, 9, 24);
-        Logger logger = mock(Logger.class);
-        SlackWebhookClient slackWebhookClient = mock(SlackWebhookClient.class);
+    void shouldReturnDefaultDateWhenDateStringIsNonNumeric() {
+        LocalDate fixedToday = LocalDate.of(2025, 9, 23);
+        String mockEndpoint = "https://hooks.slack-mock.com/services/test/webhook";
+        TestableSlackReportingTimerTriggered function = new TestableSlackReportingTimerTriggered(
+                mockEndpoint,
+                fixedToday,
+                mockAggregationService,
+                mockSlackWebhookClient
+        );
+        // Given
+        String invalidDate = "aa-bb-cccc";
+        LocalDate defaultDate = LocalDate.of(2000, 1, 1);
 
-        try (MockedStatic<SlackDateRangeReportMessageUtils> utils = Mockito
-                .mockStatic(SlackDateRangeReportMessageUtils.class);
-                MockedStatic<Executors> executorsMock = Mockito.mockStatic(Executors.class)) {
+        // When
+        LocalDate result = function.getDateFromString(invalidDate, defaultDate);
 
-            utils.when(() -> SlackDateRangeReportMessageUtils.createInitialBlock(startDate, endDate, logger))
-                    .thenReturn(
-                            new String[] {
-                                    "initial1",
-                                    "initial2"
-                            }
-                    );
-
-            ScheduledExecutorService mockScheduler = mock(ScheduledExecutorService.class);
-            executorsMock.when(Executors::newSingleThreadScheduledExecutor).thenReturn(mockScheduler);
-
-            AtomicInteger index = new AtomicInteger(0);
-            String[] initialBlock = SlackDateRangeReportMessageUtils.createInitialBlock(startDate, endDate, logger);
-            for (String block : initialBlock) {
-                index.incrementAndGet();
-                TimerTask task = new TimerTask() {
-                    @Override
-                    public void run() {
-                        slackWebhookClient.postMessageToWebhook(block);
-                    }
-                };
-                mockScheduler.schedule(task, index.get(), TimeUnit.SECONDS);
-            }
-
-            // Verify
-            ArgumentCaptor<Runnable> taskCaptor = ArgumentCaptor.forClass(Runnable.class);
-            verify(mockScheduler, times(2)).schedule(taskCaptor.capture(), anyLong(), eq(TimeUnit.SECONDS));
-
-            // Run tasks to assert messages sent
-            for (Runnable task : taskCaptor.getAllValues())
-                task.run();
-            verify(slackWebhookClient).postMessageToWebhook("initial1");
-            verify(slackWebhookClient).postMessageToWebhook("initial2");
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
+        // Then
+        assertEquals(defaultDate, result);
     }
 
     @Test
-    void shouldScheduleReportMessages() {
-        List<String> reportMessages = new ArrayList<>(Arrays.asList("report1", "report2"));
-        SlackWebhookClient slackWebhookClient = mock(SlackWebhookClient.class);
+    void shouldReturnDefaultDateWhenDateStringMalformed() {
+        LocalDate fixedToday = LocalDate.of(2025, 9, 23);
+        String mockEndpoint = "https://hooks.slack-mock.com/services/test/webhook";
+        TestableSlackReportingTimerTriggered function = new TestableSlackReportingTimerTriggered(
+                mockEndpoint,
+                fixedToday,
+                mockAggregationService,
+                mockSlackWebhookClient
+        );
+        // Given
+        String malformedDate = "2025-09"; // missing day
+        LocalDate defaultDate = LocalDate.of(2000, 1, 1);
 
-        try (MockedStatic<Executors> executorsMock = Mockito.mockStatic(Executors.class)) {
-            ScheduledExecutorService mockScheduler = mock(ScheduledExecutorService.class);
-            executorsMock.when(Executors::newSingleThreadScheduledExecutor).thenReturn(mockScheduler);
+        // When
+        LocalDate result = function.getDateFromString(malformedDate, defaultDate);
 
-            AtomicInteger index = new AtomicInteger(2); // assuming initial block already scheduled
-            for (String report : reportMessages) {
-                int currentIndex = index.incrementAndGet();
-                TimerTask task = new TimerTask() {
-                    @Override
-                    public void run() {
-                        slackWebhookClient.postMessageToWebhook(report);
-                    }
-                };
-                mockScheduler.schedule(task, index.get(), TimeUnit.SECONDS);
-            }
-
-            // Verify scheduling
-            ArgumentCaptor<Runnable> taskCaptor = ArgumentCaptor.forClass(Runnable.class);
-            verify(mockScheduler, times(2)).schedule(taskCaptor.capture(), anyLong(), eq(TimeUnit.SECONDS));
-
-            // Run tasks to assert messages sent
-            for (Runnable task : taskCaptor.getAllValues())
-                task.run();
-            verify(slackWebhookClient).postMessageToWebhook("report1");
-            verify(slackWebhookClient).postMessageToWebhook("report2");
-        }
+        // Then
+        assertEquals(defaultDate, result);
     }
 }

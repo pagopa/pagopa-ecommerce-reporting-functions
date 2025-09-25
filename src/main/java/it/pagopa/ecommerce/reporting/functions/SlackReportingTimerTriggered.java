@@ -26,7 +26,7 @@ import java.util.logging.Logger;
 /**
  * Azure Functions with Azure Queue trigger.
  */
-public class SlackReportingTimerTriggered {
+public abstract class SlackReportingTimerTriggered {
 
     /**
      * This function will be invoked periodically according to the specified
