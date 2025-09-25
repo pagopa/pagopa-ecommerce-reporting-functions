@@ -43,6 +43,9 @@ public class SlackDateRangeReportMessageUtils {
 
         // Split blocks into multiple messages if needed
         List<String> messages = new ArrayList<>();
+        Map<String, Object> clientBlock = createTextBlock("header", "plain_text", "Client: " + clientId, false);
+        tableBlocks.add(0, clientBlock);
+        tableBlocks.add(createDivider());
         List<Map<String, Object>> messageBlocks = new ArrayList<>(tableBlocks);
 
         Map<String, Object> message = Map.of("blocks", messageBlocks);
@@ -114,6 +117,10 @@ public class SlackDateRangeReportMessageUtils {
                                                             String clientId
     ) {
         List<AggregatedStatusGroup> sortedGroups = new ArrayList<>(aggregatedGroups);
+        sortedGroups = sortedGroups.stream()
+                .filter(group -> clientId.equals(group.getClientId()))
+                .collect(Collectors.toList());
+
         sortedGroups.sort(
                 Comparator.comparing(
                         group -> group.getStatusCounts().getOrDefault("ACTIVATED", 0),
