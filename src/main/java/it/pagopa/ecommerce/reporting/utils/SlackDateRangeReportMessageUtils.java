@@ -332,17 +332,8 @@ public class SlackDateRangeReportMessageUtils {
     private static List<Map<String, Object>> createHeaderRow() {
         List<Map<String, Object>> headerCells = new ArrayList<>();
 
-        String[] headers = {
-                "Metodo",
-                "OK",
-                "KO",
-                "ABBANDONATO",
-                "IN CORSO",
-                "DA ANALIZZARE"
-        };
-
-        for (String header : headers) {
-            Map<String, Object> cell = createBoldCell(header);
+        for (TableHeader header : TableHeader.values()) {
+            Map<String, Object> cell = createBoldCell(header.getLabel());
             headerCells.add(cell);
         }
 

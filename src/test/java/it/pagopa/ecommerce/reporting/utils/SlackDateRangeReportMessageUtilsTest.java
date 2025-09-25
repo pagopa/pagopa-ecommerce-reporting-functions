@@ -101,21 +101,30 @@ class SlackDateRangeReportMessageUtilsTest {
     void shouldFilterByClientIdAndSortByActivated() {
         // Given
         AggregatedStatusGroup group1 = new AggregatedStatusGroup(
-                "2025-09-16", "clientA", "pspX", "CP",
+                "2025-09-16",
+                "clientA",
+                "pspX",
+                "CP",
                 List.of("OK", "KO")
         );
         group1.incrementStatus("ACTIVATED", 5);
         group1.incrementStatus("FAILED", 2);
 
         AggregatedStatusGroup group2 = new AggregatedStatusGroup(
-                "2025-09-16", "clientA", "pspY", "CP",
+                "2025-09-16",
+                "clientA",
+                "pspY",
+                "CP",
                 List.of("OK", "KO")
         );
         group2.incrementStatus("ACTIVATED", 10);
         group2.incrementStatus("KO", 1);
 
         AggregatedStatusGroup group3 = new AggregatedStatusGroup(
-                "2025-09-16", "clientB", "pspZ", "CP",
+                "2025-09-16",
+                "clientB",
+                "pspZ",
+                "CP",
                 List.of("OK", "KO")
         );
         group3.incrementStatus("ACTIVATED", 7);
@@ -139,12 +148,17 @@ class SlackDateRangeReportMessageUtilsTest {
     void shouldReturnEmptyListIfNoClientMatches() {
         // Given
         AggregatedStatusGroup group = new AggregatedStatusGroup(
-                "2025-09-16", "clientB", "pspX", "CP", List.of("OK")
+                "2025-09-16",
+                "clientB",
+                "pspX",
+                "CP",
+                List.of("OK")
         );
         group.incrementStatus("ACTIVATED", 3);
 
         // When
-        List<AggregatedStatusGroup> sorted = SlackDateRangeReportMessageUtils.sortAggregatedGroups(List.of(group), "clientA");
+        List<AggregatedStatusGroup> sorted = SlackDateRangeReportMessageUtils
+                .sortAggregatedGroups(List.of(group), "clientA");
 
         // Then
         assertTrue(sorted.isEmpty(), "No groups should be returned for unmatched clientId");
@@ -177,11 +191,14 @@ class SlackDateRangeReportMessageUtilsTest {
         groups.add(group2);
 
         // When
-        List<AggregatedStatusGroup> result = SlackDateRangeReportMessageUtils.sortAggregatedGroups(groups, "client1");
+        List<AggregatedStatusGroup> resultClient1 = SlackDateRangeReportMessageUtils
+                .sortAggregatedGroups(groups, "client1");
+        List<AggregatedStatusGroup> resultClient2 = SlackDateRangeReportMessageUtils
+                .sortAggregatedGroups(groups, "client2");
 
         // Then
-        assertEquals("client1", result.get(0).getClientId()); // 50
-        assertEquals("client2", result.get(1).getClientId()); // 0 (default)
+        assertEquals("client1", resultClient1.get(0).getClientId()); // 50
+        assertEquals("client2", resultClient2.get(0).getClientId()); // 0 (default)
     }
 
     @Test
@@ -528,8 +545,8 @@ class SlackDateRangeReportMessageUtilsTest {
         assertTrue(root.has("blocks"), "Message should contain blocks");
 
         JsonNode blocks = root.get("blocks");
-        assertEquals(1, blocks.size(), "Expected 1 table block");
-        assertEquals("table", blocks.get(0).get("type").asText());
+        assertEquals(3, blocks.size(), "Expected 1 table block + 1 title block + 1 divider block");
+        assertEquals("table", blocks.get(1).get("type").asText());
 
         verify(mockLogger).info("Created 1 Slack messages");
     }
