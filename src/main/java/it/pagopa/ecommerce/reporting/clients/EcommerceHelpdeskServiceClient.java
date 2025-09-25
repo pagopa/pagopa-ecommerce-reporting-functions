@@ -48,6 +48,7 @@ public class EcommerceHelpdeskServiceClient {
         if (!isValid(clientId, "Client ID") || !isValid(pspId, "PSP ID")
                 || !isValid(paymentTypeCode, "PaymentTypeCode") || !isValid(startDate, "startDate")
                 || !isValid(endDate, "endDate") || !isValid(apiKey(), "Subscription Key")) {
+            logger.warning("Invalid fields passed");
             return objectMapper.createObjectNode();
         }
         logger.warning(
