@@ -88,6 +88,7 @@ public class SlackReportingTimerTriggered {
         AtomicInteger index = new AtomicInteger(0);
         String[] initialBlock = SlackDateRangeReportMessageUtils.createInitialBlock(startDate, endDate, logger);
         for (String block : initialBlock) {
+            index.getAndIncrement();
             TimerTask task = new TimerTask() {
                 @Override
                 public void run() {

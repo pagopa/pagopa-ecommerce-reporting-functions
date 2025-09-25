@@ -84,6 +84,7 @@ class SlackReportingTimerTriggeredTest {
         }
     }
 
+    @SetEnvironmentVariable(key = "ECOMMERCE_CLIENTS_LIST", value = "[\"clientA\"]")
     @Test
     void shouldSendSlackMessage() throws Exception {
         when(mockContext.getLogger()).thenReturn(mockLogger);
@@ -106,6 +107,17 @@ class SlackReportingTimerTriggeredTest {
 
         try (MockedStatic<SlackDateRangeReportMessageUtils> mockedUtils = Mockito
                 .mockStatic(SlackDateRangeReportMessageUtils.class)) {
+            mockedUtils.when(
+                    () -> SlackDateRangeReportMessageUtils.createInitialBlock(
+                            any(LocalDate.class),
+                            any(LocalDate.class),
+                            any(Logger.class)
+                    )
+            ).thenReturn(
+                    new String[] {
+                            "Initial block message"
+                    }
+            );
             mockedUtils.when(
                     () -> SlackDateRangeReportMessageUtils.createAggregatedTableWeeklyReport(
                             anyList(),
@@ -226,9 +238,6 @@ class SlackReportingTimerTriggeredTest {
         LocalDate fixedToday = LocalDate.of(2025, 9, 23);
         String mockEndpoint = "https://hooks.slack-mock.com/services/test/webhook";
 
-        when(mockAggregationService.aggregateStatusCountByClientAndPaymentType(any(), any(), any()))
-                .thenThrow(new RuntimeException("Database error"));
-
         TestableSlackReportingTimerTriggered function = new TestableSlackReportingTimerTriggered(
                 mockEndpoint,
                 fixedToday,
@@ -286,6 +295,17 @@ class SlackReportingTimerTriggeredTest {
                                     "Third"
                             }
                     );
+            mockedUtils.when(
+                    () -> SlackDateRangeReportMessageUtils.createInitialBlock(
+                            any(LocalDate.class),
+                            any(LocalDate.class),
+                            any(Logger.class)
+                    )
+            ).thenReturn(
+                    new String[] {
+                            "Initial block message"
+                    }
+            );
 
             try (MockedStatic<Executors> executorsMock = Mockito.mockStatic(Executors.class)) {
                 ScheduledExecutorService mockScheduler = mock(ScheduledExecutorService.class);
@@ -308,7 +328,7 @@ class SlackReportingTimerTriggeredTest {
 
                 function.run("timerInfo", mockContext);
 
-                verify(mockScheduler, times(3))
+                verify(mockScheduler, times(7))
                         .schedule(any(Runnable.class), delayCaptor.capture(), eq(TimeUnit.SECONDS));
 
                 List<Long> capturedDelays = delayCaptor.getAllValues();

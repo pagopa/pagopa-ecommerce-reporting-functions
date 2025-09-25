@@ -114,17 +114,12 @@ public class SlackDateRangeReportMessageUtils {
                                                             String clientId
     ) {
         List<AggregatedStatusGroup> sortedGroups = new ArrayList<>(aggregatedGroups);
-        sortedGroups = sortedGroups.stream()
-                .filter(group -> clientId.equals(group.getClientId()))
-                .collect(Collectors.toList());
-
-        sortedGroups
-                .sort(
-                        Comparator.comparing(
-                                group -> group.getStatusCounts().getOrDefault("ACTIVATED", 0),
-                                Comparator.reverseOrder()
-                        )
-                );
+        sortedGroups.sort(
+                Comparator.comparing(
+                        group -> group.getStatusCounts().getOrDefault("ACTIVATED", 0),
+                        Comparator.reverseOrder()
+                )
+        );
         return sortedGroups;
     }
 
@@ -208,7 +203,7 @@ public class SlackDateRangeReportMessageUtils {
                 "header",
                 "plain_text",
                 SlackMessageConstants.PAGOPA_EMOJI + " Report Settimanale Transazioni " + startDate + " - " + endDate
-                        + " per client " + SlackMessageConstants.PAGOPA_EMOJI,
+                        + " " + SlackMessageConstants.PAGOPA_EMOJI,
                 true
         );
     }
