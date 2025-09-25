@@ -1,6 +1,7 @@
 package it.pagopa.ecommerce.reporting.utils;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -10,14 +11,26 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.logging.Logger;
-
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.verify;
 
-@ExtendWith(MockitoExtension.class)
+import java.lang.reflect.Method;
+
 class SlackDateRangeReportMessageUtilsTest {
 
+    @ExtendWith(MockitoExtension.class)
+
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     @Mock
     private Logger mockLogger;
+
+    private boolean rowContainsText(
+                                    List<Map<String, Object>> row,
+                                    String value
+    ) {
+        return row.stream()
+                .anyMatch(cell -> value.equals(cell.get("text")));
+    }
 
     @Test
     void shouldFormatDateInItalianLocale() {
@@ -387,5 +400,137 @@ class SlackDateRangeReportMessageUtilsTest {
         assertEquals(0, group.getStatusCounts().get("NOTIFIED_OK"));
         assertEquals(0, group.getStatusCounts().get("EXPIRED"));
         assertEquals(3, group.getStatusCounts().size());
+    }
+
+    @Test
+    void shouldCreateEmptyReportMessageWithReflection() throws Exception {
+        // Given
+        LocalDate startDate = LocalDate.of(2023, 1, 1);
+        LocalDate endDate = LocalDate.of(2023, 1, 7);
+
+        // Use reflection to access the private static method
+        Method method = SlackDateRangeReportMessageUtils.class
+                .getDeclaredMethod("createEmptyReportMessage", LocalDate.class, LocalDate.class);
+        method.setAccessible(true);
+
+        // When
+        String json = (String) method.invoke(null, startDate, endDate);
+
+        // Then
+        JsonNode root = OBJECT_MAPPER.readTree(json);
+
+        // Verify that "blocks" is an array with 3 elements
+        assertTrue(root.has("blocks"));
+        JsonNode blocks = root.get("blocks");
+        assertEquals(3, blocks.size());
+
+        // 1st block: header
+        JsonNode header = blocks.get(0);
+        assertEquals("header", header.get("type").asText());
+        JsonNode headerText = header.get("text");
+        assertEquals("plain_text", headerText.get("type").asText());
+        assertEquals(
+                ":pagopa: Report Settimanale Transazioni 1 gennaio 2023 - 7 gennaio 2023 :pagopa:",
+                headerText.get("text").asText()
+        );
+        assertTrue(headerText.get("emoji").asBoolean());
+
+        // 2nd block: image
+        JsonNode imageBlock = blocks.get(1);
+        assertEquals("image", imageBlock.get("type").asText());
+
+        // 3rd block: text section
+        JsonNode sectionBlock = blocks.get(2);
+        assertEquals("section", sectionBlock.get("type").asText());
+        JsonNode sectionText = sectionBlock.get("text");
+        assertEquals("mrkdwn", sectionText.get("type").asText());
+        assertEquals(
+                "Non ci sono dati da visualizzare per il periodo selezionato.",
+                sectionText.get("text").asText()
+        );
+    }
+
+    @Test
+    void shouldCreateTableBlocksWithAggregatedGroups() {
+        // Given
+        AggregatedStatusGroup group1 = new AggregatedStatusGroup(
+                "2025-09-16",
+                "clientA",
+                "pspX",
+                "CP",
+                List.of("OK", "KO", "ABBANDONATO", "IN CORSO", "DA ANALIZZARE")
+        );
+
+        AggregatedStatusGroup group2 = new AggregatedStatusGroup(
+                "2025-09-16",
+                "clientB",
+                "pspY",
+                "CP",
+                List.of("OK", "KO", "ABBANDONATO", "IN CORSO", "DA ANALIZZARE")
+        );
+
+        List<AggregatedStatusGroup> groups = Arrays.asList(group1, group2);
+
+        // When
+        List<Map<String, Object>> blocks = SlackDateRangeReportMessageUtils.createTableBlocks(groups);
+
+        // Then
+        assertNotNull(blocks);
+        assertEquals(1, blocks.size(), "Expected only one table block");
+
+        Map<String, Object> tableBlock = blocks.get(0);
+        assertEquals("table", tableBlock.get("type"));
+
+        @SuppressWarnings("unchecked")
+        List<List<Map<String, Object>>> rows = (List<List<Map<String, Object>>>) tableBlock.get("rows");
+
+        // Should have 1 header + 2 data rows
+        assertEquals(3, rows.size());
+    }
+
+    @Test
+    void shouldCreateAggregatedTableWeeklyReportWithGroups() throws JsonProcessingException {
+
+        LocalDate startDate = LocalDate.of(2025, 9, 16);
+        LocalDate endDate = LocalDate.of(2025, 9, 22);
+
+        AggregatedStatusGroup group1 = new AggregatedStatusGroup(
+                "2025-09-16",
+                "clientA",
+                "pspX",
+                "CP",
+                List.of("OK", "KO", "ABBANDONATO", "IN CORSO", "DA ANALIZZARE")
+        );
+        AggregatedStatusGroup group2 = new AggregatedStatusGroup(
+                "2025-09-16",
+                "clientB",
+                "pspY",
+                "CP",
+                List.of("OK", "KO", "ABBANDONATO", "IN CORSO", "DA ANALIZZARE")
+        );
+
+        List<AggregatedStatusGroup> groups = List.of(group1, group2);
+
+        // When
+        String[] messages = SlackDateRangeReportMessageUtils.createAggregatedTableWeeklyReport(
+                groups,
+                startDate,
+                endDate,
+                mockLogger,
+                "clientA"
+        );
+
+        // Then
+        assertNotNull(messages);
+        assertEquals(1, messages.length, "Expected 1 Slack message for small number of groups");
+
+        JsonNode root = OBJECT_MAPPER.readTree(messages[0]);
+        assertTrue(root.has("blocks"), "Message should contain blocks");
+
+        JsonNode blocks = root.get("blocks");
+        assertEquals(1, blocks.size(), "Expected 1 table block");
+        assertEquals("table", blocks.get(0).get("type").asText());
+
+        verify(mockLogger).info("Created 1 Slack messages");
     }
 }
