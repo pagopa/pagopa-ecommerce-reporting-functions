@@ -79,22 +79,22 @@ public class TransactionStatusAggregationService {
      * <p>
      * For each day between {@param startDate} and {@param endDate} (inclusive),
      * this method queries the table storage for entities matching the daily
-     * partition key. For each entity, the method extracts the {@param clientId}
-     * and {@param paymentTypeCode}, then accumulates status counts into an
+     * partition key. For each entity, the method extracts the {@param clientId} and
+     * {@param paymentTypeCode}, then accumulates status counts into an
      * {@link AggregatedStatusGroup}. Groups are keyed by {@param clientId} +
      * {@param paymentType}, and include the following status categories:
      * <ul>
-     *     <li>{@code ABBANDONATO}</li>
-     *     <li>{@code DA ANALIZZARE}</li>
-     *     <li>{@code KO}</li>
-     *     <li>{@code OK}</li>
-     *     <li>{@code IN CORSO}</li>
+     * <li>{@code ABBANDONATO}</li>
+     * <li>{@code DA ANALIZZARE}</li>
+     * <li>{@code KO}</li>
+     * <li>{@code OK}</li>
+     * <li>{@code IN CORSO}</li>
      * </ul>
      * <p>
      * Status counts are normalized into categories using the
-     * {@code STATUS_TO_CATEGORY} mapping. If an entity property for a given
-     * status is non-null and greater than zero, its count is added to the
-     * corresponding category total in the aggregated group.
+     * {@code STATUS_TO_CATEGORY} mapping. If an entity property for a given status
+     * is non-null and greater than zero, its count is added to the corresponding
+     * category total in the aggregated group.
      *
      * @param startDate the inclusive start date of the reporting period
      * @param endDate   the inclusive end date of the reporting period
