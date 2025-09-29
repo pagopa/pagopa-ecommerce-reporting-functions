@@ -59,4 +59,44 @@ public class AggregatedStatusGroup {
 
         this.statusCounts = filteredCounts;
     }
+
+    public String getDate() {
+        return date;
+    }
+
+    public void setDate(String date) {
+        this.date = date;
+    }
+
+    public String getClientId() {
+        return clientId;
+    }
+
+    public void setClientId(String clientId) {
+        this.clientId = clientId;
+    }
+
+    public String getPspId() {
+        return pspId;
+    }
+
+    public void setPspId(String pspId) {
+        this.pspId = pspId;
+    }
+
+    public String getPaymentTypeCode() {
+        return paymentTypeCode;
+    }
+
+    public void setPaymentTypeCode(String paymentTypeCode) {
+        this.paymentTypeCode = paymentTypeCode;
+    }
+
+    public Map<String, Integer> getStatusCounts() {
+        return statusCounts;
+    }
+
+    public void setStatusCounts(Map<String, Integer> statusCounts) {
+        this.statusCounts = statusCounts;
+    }
 }

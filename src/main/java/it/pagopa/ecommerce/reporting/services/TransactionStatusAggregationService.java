@@ -32,6 +32,11 @@ import java.util.logging.Logger;
  */
 public class TransactionStatusAggregationService {
 
+    public static final String ABANDONED = "ABBANDONATO";
+    public static final String TO_BE_ANALYZED = "DA ANALIZZARE";
+    public static final String KO = "KO";
+    public static final String OK = "OK";
+    public static final String IN_PROGRESS = "IN CORSO";
     private final String CONNECTION_STRING = System.getenv("ECOMMERCE_REPORTING_CONNECTION_STRING");
     private final String TRANSACTIONS_STATUS_TABLE = System.getenv("ECOMMERCE_REPORTING_TABLE");
 
@@ -49,28 +54,28 @@ public class TransactionStatusAggregationService {
     }
 
     private static final Map<String, String> STATUS_TO_CATEGORY = Map.ofEntries(
-            Map.entry("EXPIRED_NOT_AUTHORIZED", "ABBANDONATO"),
-            Map.entry("CANCELLATION_EXPIRED", "ABBANDONATO"),
-            Map.entry("CANCELED", "ABBANDONATO"),
+            Map.entry("EXPIRED_NOT_AUTHORIZED", ABANDONED),
+            Map.entry("CANCELLATION_EXPIRED", ABANDONED),
+            Map.entry("CANCELED", ABANDONED),
 
-            Map.entry("CLOSURE_ERROR", "DA ANALIZZARE"),
-            Map.entry("EXPIRED", "DA ANALIZZARE"),
-            Map.entry("REFUND_ERROR", "DA ANALIZZARE"),
-            Map.entry("NOTIFICATION_ERROR", "DA ANALIZZARE"),
+            Map.entry("CLOSURE_ERROR", TO_BE_ANALYZED),
+            Map.entry("EXPIRED", TO_BE_ANALYZED),
+            Map.entry("REFUND_ERROR", TO_BE_ANALYZED),
+            Map.entry("NOTIFICATION_ERROR", TO_BE_ANALYZED),
 
-            Map.entry("NOTIFIED_KO", "KO"),
-            Map.entry("REFUNDED", "KO"),
-            Map.entry("UNAUTHORIZED", "KO"),
+            Map.entry("NOTIFIED_KO", KO),
+            Map.entry("REFUNDED", KO),
+            Map.entry("UNAUTHORIZED", KO),
 
-            Map.entry("NOTIFIED_OK", "OK"),
+            Map.entry("NOTIFIED_OK", OK),
 
-            Map.entry("ACTIVATED", "IN CORSO"),
-            Map.entry("AUTHORIZATION_REQUESTED", "IN CORSO"),
-            Map.entry("AUTHORIZATION_COMPLETED", "IN CORSO"),
-            Map.entry("CLOSED", "IN CORSO"),
-            Map.entry("NOTIFICATION_REQUESTED", "IN CORSO"),
-            Map.entry("REFUND_REQUESTED", "IN CORSO"),
-            Map.entry("CANCELLATION_REQUESTED", "IN CORSO")
+            Map.entry("ACTIVATED", IN_PROGRESS),
+            Map.entry("AUTHORIZATION_REQUESTED", IN_PROGRESS),
+            Map.entry("AUTHORIZATION_COMPLETED", IN_PROGRESS),
+            Map.entry("CLOSED", IN_PROGRESS),
+            Map.entry("NOTIFICATION_REQUESTED", IN_PROGRESS),
+            Map.entry("REFUND_REQUESTED", IN_PROGRESS),
+            Map.entry("CANCELLATION_REQUESTED", IN_PROGRESS)
     );
 
     /**
@@ -135,7 +140,7 @@ public class TransactionStatusAggregationService {
                             clientId,
                             null, // pspId not needed anymore
                             paymentType,
-                            new ArrayList<>(Set.of("ABBANDONATO", "DA ANALIZZARE", "KO", "OK", "IN CORSO"))
+                            new ArrayList<>(Set.of(ABANDONED, TO_BE_ANALYZED, KO, OK, IN_PROGRESS))
                     );
                     aggregatedMap.put(key, group);
                 }
@@ -145,7 +150,7 @@ public class TransactionStatusAggregationService {
                     int count = raw != null ? Integer.parseInt(raw.toString()) : 0;
 
                     if (count > 0) {
-                        String category = STATUS_TO_CATEGORY.getOrDefault(rawStatus, "IN CORSO");
+                        String category = STATUS_TO_CATEGORY.getOrDefault(rawStatus, IN_PROGRESS);
                         group.incrementStatus(category, count);
                     }
                 }

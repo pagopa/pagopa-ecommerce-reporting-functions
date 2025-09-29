@@ -48,6 +48,14 @@ public class EcommerceHelpdeskServiceClientTest {
 
     private MockedStatic<HttpClients> mockStatic;
 
+    private static final String TEST_CLIENT_ID = "clientId";
+    private static final String TEST_PSP_ID = "psp123";
+    private static final String TEST_PAYMENT_TYPE = "PTC";
+    private static final String TEST_CLIENT_ALTERNATIVE = "testClient";
+    private static final String TEST_PSP_ALTERNATIVE = "testPsp";
+    private static final String TEST_PAYMENT_TYPE_CARD = "CARD";
+    private static final String EMPTY_STRING = "";
+
     EcommerceHelpdeskServiceClient ecommerceHelpdeskServiceClient;
 
     @BeforeEach
@@ -92,7 +100,7 @@ public class EcommerceHelpdeskServiceClientTest {
     public void fetchTransactionMetricsTestNoClientHttp() {
         ecommerceHelpdeskServiceClient = EcommerceHelpdeskServiceClient.getInstance(mockLogger);
         JsonNode node = ecommerceHelpdeskServiceClient.fetchTransactionMetrics(
-                "clientId",
+                TEST_CLIENT_ID,
                 "pspId",
                 "paymentTypeCode",
                 OffsetDateTime.now(),
@@ -130,7 +138,7 @@ public class EcommerceHelpdeskServiceClientTest {
 
         ecommerceHelpdeskServiceClient = EcommerceHelpdeskServiceClient.getInstance(mockLogger);
         JsonNode node = ecommerceHelpdeskServiceClient.fetchTransactionMetrics(
-                "clientId",
+                TEST_CLIENT_ID,
                 "pspId",
                 "paymentTypeCode",
                 OffsetDateTime.now(),
@@ -148,9 +156,9 @@ public class EcommerceHelpdeskServiceClientTest {
         EcommerceHelpdeskServiceClient client = EcommerceHelpdeskServiceClient.getInstance(mockLogger);
 
         JsonNode result = client.fetchTransactionMetrics(
-                "",
-                "psp123",
-                "PTC",
+                EMPTY_STRING,
+                TEST_PSP_ID,
+                TEST_PAYMENT_TYPE,
                 OffsetDateTime.now(),
                 OffsetDateTime.now()
         );
@@ -175,7 +183,7 @@ public class EcommerceHelpdeskServiceClientTest {
         ecommerceHelpdeskServiceClient = EcommerceHelpdeskServiceClient.getInstance(mockLogger);
 
         JsonNode node = ecommerceHelpdeskServiceClient.fetchTransactionMetrics(
-                "clientId",
+                TEST_CLIENT_ID,
                 "pspId",
                 "paymentTypeCode",
                 OffsetDateTime.now(),
@@ -203,9 +211,9 @@ public class EcommerceHelpdeskServiceClientTest {
         EcommerceHelpdeskServiceClient client = EcommerceHelpdeskServiceClient.getInstance(mockLogger);
 
         JsonNode result = client.fetchTransactionMetrics(
-                "clientId",
-                "psp123",
-                "PTC",
+                TEST_CLIENT_ID,
+                TEST_PSP_ID,
+                TEST_PAYMENT_TYPE,
                 OffsetDateTime.now(),
                 OffsetDateTime.now()
         );
@@ -220,10 +228,10 @@ public class EcommerceHelpdeskServiceClientTest {
     void testNullApiKeyReturnEmptyJson() {
         EcommerceHelpdeskServiceClient client = EcommerceHelpdeskServiceClient.getInstance(mockLogger);
 
-        JsonNode result = client.fetchTransactionMetrics(
-                "clientId",
-                "psp123",
-                "PTC",
+        client.fetchTransactionMetrics(
+                TEST_CLIENT_ID,
+                TEST_PSP_ID,
+                TEST_PAYMENT_TYPE,
                 OffsetDateTime.now(),
                 OffsetDateTime.now()
         );
@@ -239,9 +247,9 @@ public class EcommerceHelpdeskServiceClientTest {
         EcommerceHelpdeskServiceClient client = EcommerceHelpdeskServiceClient.getInstance(mockLogger);
 
         JsonNode result = client.fetchTransactionMetrics(
-                "clientId",
-                "",
-                "PTC",
+                TEST_CLIENT_ID,
+                EMPTY_STRING,
+                TEST_PAYMENT_TYPE,
                 OffsetDateTime.now(),
                 OffsetDateTime.now()
         );
@@ -258,9 +266,9 @@ public class EcommerceHelpdeskServiceClientTest {
         EcommerceHelpdeskServiceClient client = EcommerceHelpdeskServiceClient.getInstance(mockLogger);
 
         JsonNode result = client.fetchTransactionMetrics(
-                "clientId",
-                "psp123",
-                "",
+                TEST_CLIENT_ID,
+                TEST_PSP_ID,
+                EMPTY_STRING,
                 OffsetDateTime.now(),
                 OffsetDateTime.now()
         );
@@ -277,9 +285,9 @@ public class EcommerceHelpdeskServiceClientTest {
         EcommerceHelpdeskServiceClient client = EcommerceHelpdeskServiceClient.getInstance(mockLogger);
 
         JsonNode result = client.fetchTransactionMetrics(
-                "clientId",
-                "psp123",
-                "PTC",
+                TEST_CLIENT_ID,
+                TEST_PSP_ID,
+                TEST_PAYMENT_TYPE,
                 null,
                 OffsetDateTime.now()
         );
@@ -296,9 +304,9 @@ public class EcommerceHelpdeskServiceClientTest {
         EcommerceHelpdeskServiceClient client = EcommerceHelpdeskServiceClient.getInstance(mockLogger);
 
         JsonNode result = client.fetchTransactionMetrics(
-                "clientId",
-                "psp123",
-                "PTC",
+                TEST_CLIENT_ID,
+                TEST_PSP_ID,
+                TEST_PAYMENT_TYPE,
                 OffsetDateTime.now(),
                 null
         );
@@ -319,9 +327,9 @@ public class EcommerceHelpdeskServiceClientTest {
         EcommerceHelpdeskServiceClient client = EcommerceHelpdeskServiceClient.getInstance(mockLogger);
 
         JsonNode result = client.fetchTransactionMetrics(
-                "clientId",
-                "psp123",
-                "PTC",
+                TEST_CLIENT_ID,
+                TEST_PSP_ID,
+                TEST_PAYMENT_TYPE,
                 OffsetDateTime.now(),
                 OffsetDateTime.now()
         );
@@ -343,9 +351,9 @@ public class EcommerceHelpdeskServiceClientTest {
         EcommerceHelpdeskServiceClient client = EcommerceHelpdeskServiceClient.getInstance(mockLogger);
 
         JsonNode result = client.fetchTransactionMetrics(
-                "clientId",
-                "psp123",
-                "PTC",
+                TEST_CLIENT_ID,
+                TEST_PSP_ID,
+                TEST_PAYMENT_TYPE,
                 OffsetDateTime.now(),
                 OffsetDateTime.now()
         );
@@ -367,9 +375,9 @@ public class EcommerceHelpdeskServiceClientTest {
         EcommerceHelpdeskServiceClient client = EcommerceHelpdeskServiceClient.getInstance(mockLogger);
 
         JsonNode result = client.fetchTransactionMetrics(
-                "clientId",
-                "psp123",
-                "PTC",
+                TEST_CLIENT_ID,
+                TEST_PSP_ID,
+                TEST_PAYMENT_TYPE,
                 OffsetDateTime.now(),
                 OffsetDateTime.now()
         );
@@ -405,9 +413,9 @@ public class EcommerceHelpdeskServiceClientTest {
         OffsetDateTime endDate = OffsetDateTime.parse("2023-01-02T00:00:00Z");
 
         JsonNode result = client.fetchTransactionMetrics(
-                "testClient",
-                "testPsp",
-                "CARD",
+                TEST_CLIENT_ALTERNATIVE,
+                TEST_PSP_ALTERNATIVE,
+                TEST_PAYMENT_TYPE_CARD,
                 startDate,
                 endDate
         );
@@ -436,9 +444,9 @@ public class EcommerceHelpdeskServiceClientTest {
         EcommerceHelpdeskServiceClient client = EcommerceHelpdeskServiceClient.getInstance(mockLogger);
 
         client.fetchTransactionMetrics(
-                "clientId",
-                "psp123",
-                "PTC",
+                TEST_CLIENT_ID,
+                TEST_PSP_ID,
+                TEST_PAYMENT_TYPE,
                 OffsetDateTime.now(),
                 OffsetDateTime.now()
         );

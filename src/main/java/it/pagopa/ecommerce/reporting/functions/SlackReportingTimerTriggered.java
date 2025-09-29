@@ -21,12 +21,15 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Azure Functions with Azure Queue trigger.
  */
 public class SlackReportingTimerTriggered {
+
+    private static final Logger logger = LoggerFactory.getLogger(SlackReportingTimerTriggered.class);
 
     /**
      * This function will be invoked periodically according to the specified
@@ -40,8 +43,7 @@ public class SlackReportingTimerTriggered {
                     final ExecutionContext context
     ) throws JsonProcessingException {
 
-        Logger logger = context.getLogger();
-        logger.info("Java Timer trigger SlackReportingTimerTriggered executed at: " + LocalDateTime.now());
+        logger.info("Java Timer trigger SlackReportingTimerTriggered executed at: {}", LocalDateTime.now());
 
         String endpoint = getEnvVariable("ECOMMERCE_SLACK_REPORTING_WEBHOOK_ENDPOINT");
         String reportStartDate = getEnvVariable("REPORT_START_DATE");
@@ -68,8 +70,10 @@ public class SlackReportingTimerTriggered {
                 .aggregateStatusCountByClientAndPaymentType(startDate, endDate, logger);
 
         logger.info(
-                "Start date: " + startDate + " to date: " + endDate +
-                        ", results: " + aggregatedStatuses.size()
+                "Start date: {} to date: {}, results: {}",
+                startDate,
+                endDate,
+                aggregatedStatuses.size()
         );
 
         // Create the report messages
@@ -82,7 +86,7 @@ public class SlackReportingTimerTriggered {
         }
         reportMessages.removeIf(String::isBlank);
 
-        logger.info("Sending " + reportMessages.size() + " table-based messages to Slack");
+        logger.info("Sending {} table-based messages to Slack", reportMessages.size());
 
         ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
         AtomicInteger index = new AtomicInteger(0);
@@ -92,7 +96,7 @@ public class SlackReportingTimerTriggered {
             TimerTask task = new TimerTask() {
                 @Override
                 public void run() {
-                    logger.info("Sending message " + block);
+                    logger.info("Sending block message {}", block);
                     slackWebhookClient.postMessageToWebhook(block);
                 }
             };
@@ -103,10 +107,11 @@ public class SlackReportingTimerTriggered {
             TimerTask task = new TimerTask() {
                 @Override
                 public void run() {
-                    logger.info("Sending message " + report);
+                    logger.info("Sending report message {}", report);
                     logger.info(
-                            "Sending table message " + currentIndex + " of " +
-                                    reportMessages.size()
+                            "Sending table message {} of {}",
+                            currentIndex,
+                            reportMessages.size()
                     );
                     slackWebhookClient.postMessageToWebhook(report);
                 }

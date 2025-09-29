@@ -4,12 +4,12 @@ import lombok.Getter;
 
 @Getter
 public enum TableHeader {
-    METODO("Metodo"),
+    METHOD("Metodo"),
     OK("OK"),
     KO("KO"),
-    ABBANDONATO("ABBANDONATO"),
-    IN_CORSO("IN CORSO"),
-    DA_ANALIZZARE("DA ANALIZZARE");
+    ABANDONED("ABBANDONATO"),
+    IN_PROGRESS("IN CORSO"),
+    TO_BE_ANALYZED("DA ANALIZZARE");
 
     private final String label;
 
@@ -17,4 +17,7 @@ public enum TableHeader {
         this.label = label;
     }
 
+    public String getLabel() {
+        return label;
+    }
 }

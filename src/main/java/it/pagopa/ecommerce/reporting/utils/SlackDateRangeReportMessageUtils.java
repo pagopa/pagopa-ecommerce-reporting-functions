@@ -6,8 +6,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
 
 /**
  * Builds Slack messages using Block Kit elements for date range reports.
@@ -19,7 +19,9 @@ public class SlackDateRangeReportMessageUtils {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.ITALIAN);
     private static final String PAGOPA_LOGO_URL = "https://selfcare.pagopa.it/assets/logo_pagopacorp.png";
-    private static final int MAX_BLOCKS_PER_MESSAGE = 40; // Reduced from 49 for safety
+    public static final String PLAIN_TEXT = "plain_text";
+    public static final String BLOCKS = "blocks";
+    public static final String ELEMENTS = "elements";
 
     /**
      * Creates an aggregated weekly report message for Slack, split into multiple
@@ -55,12 +57,12 @@ public class SlackDateRangeReportMessageUtils {
 
         // Split blocks into multiple messages if needed
         List<String> messages = new ArrayList<>();
-        Map<String, Object> clientBlock = createTextBlock("header", "plain_text", "Client: " + clientId, false);
+        Map<String, Object> clientBlock = createTextBlock("header", PLAIN_TEXT, "Client: " + clientId, false);
         tableBlocks.add(0, clientBlock);
         tableBlocks.add(createDivider());
         List<Map<String, Object>> messageBlocks = new ArrayList<>(tableBlocks);
 
-        Map<String, Object> message = Map.of("blocks", messageBlocks);
+        Map<String, Object> message = Map.of(BLOCKS, messageBlocks);
         messages.add(OBJECT_MAPPER.writeValueAsString(message));
 
         logger.info("Created " + messages.size() + " Slack messages");
@@ -83,7 +85,7 @@ public class SlackDateRangeReportMessageUtils {
         messageBlocks.add(createHeaderDescriptionBlock(formattedStartDate, formattedEndDate));
         messageBlocks.add(createDivider());
 
-        Map<String, Object> message = Map.of("blocks", messageBlocks);
+        Map<String, Object> message = Map.of(BLOCKS, messageBlocks);
         messages.add(OBJECT_MAPPER.writeValueAsString(message));
 
         logger.info("Created " + messages.size() + " Slack messages");
@@ -114,7 +116,7 @@ public class SlackDateRangeReportMessageUtils {
         );
 
         Map<String, Object> message = new HashMap<>();
-        message.put("blocks", blocks);
+        message.put(BLOCKS, blocks);
         return OBJECT_MAPPER.writeValueAsString(message);
     }
 
@@ -220,7 +222,7 @@ public class SlackDateRangeReportMessageUtils {
     ) {
         return createTextBlock(
                 "header",
-                "plain_text",
+                PLAIN_TEXT,
                 SlackMessageConstants.PAGOPA_EMOJI + " Report Settimanale Transazioni " + startDate + " - " + endDate
                         + " " + SlackMessageConstants.PAGOPA_EMOJI,
                 true
@@ -233,7 +235,7 @@ public class SlackDateRangeReportMessageUtils {
     ) {
         return createTextBlock(
                 "section",
-                "plain_text",
+                PLAIN_TEXT,
                 "Di seguito il report suddiviso per Client, PSP e metodo pagamento di pagamento per l'intervallo di tempo dal "
                         + startDate + " al " + endDate,
                 true
@@ -376,14 +378,14 @@ public class SlackDateRangeReportMessageUtils {
 
         Map<String, Object> richTextSection = new HashMap<>();
         richTextSection.put("type", "rich_text_section");
-        richTextSection.put("elements", elements);
+        richTextSection.put(ELEMENTS, elements);
 
         List<Map<String, Object>> richTextElements = new ArrayList<>();
         richTextElements.add(richTextSection);
 
         Map<String, Object> cell = new HashMap<>();
         cell.put("type", "rich_text");
-        cell.put("elements", richTextElements);
+        cell.put(ELEMENTS, richTextElements);
 
         return cell;
     }
@@ -398,14 +400,14 @@ public class SlackDateRangeReportMessageUtils {
 
         Map<String, Object> richTextSection = new HashMap<>();
         richTextSection.put("type", "rich_text_section");
-        richTextSection.put("elements", elements);
+        richTextSection.put(ELEMENTS, elements);
 
         List<Map<String, Object>> richTextElements = new ArrayList<>();
         richTextElements.add(richTextSection);
 
         Map<String, Object> cell = new HashMap<>();
         cell.put("type", "rich_text");
-        cell.put("elements", richTextElements);
+        cell.put(ELEMENTS, richTextElements);
 
         return cell;
     }
