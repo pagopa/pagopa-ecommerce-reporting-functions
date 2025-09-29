@@ -12,7 +12,7 @@ import it.pagopa.ecommerce.reporting.utils.StatusStorageFields;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
 
 /**
  * Service class to aggregate status counts for transactions within a given date
