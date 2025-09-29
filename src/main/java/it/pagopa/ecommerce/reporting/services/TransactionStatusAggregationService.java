@@ -145,10 +145,8 @@ public class TransactionStatusAggregationService {
                     int count = raw != null ? Integer.parseInt(raw.toString()) : 0;
 
                     if (count > 0) {
-                        String category = STATUS_TO_CATEGORY.get(rawStatus);
-                        if (category != null) {
-                            group.incrementStatus(category, count);
-                        }
+                        String category = STATUS_TO_CATEGORY.getOrDefault(rawStatus, "IN CORSO");
+                        group.incrementStatus(category, count);
                     }
                 }
             }
