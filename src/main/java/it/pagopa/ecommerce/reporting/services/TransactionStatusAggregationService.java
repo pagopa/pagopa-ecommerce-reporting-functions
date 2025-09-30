@@ -13,7 +13,6 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Service class to aggregate status counts for transactions within a given date

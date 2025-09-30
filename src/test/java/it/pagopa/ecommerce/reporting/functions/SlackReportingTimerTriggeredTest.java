@@ -151,10 +151,10 @@ class SlackReportingTimerTriggeredTest {
         }
     }
 
-    @SetEnvironmentVariable(key = "ECOMMERCE_CLIENTS_LIST", value = "[\"clientA\"]")
+    @SetEnvironmentVariable(key = "ECOMMERCE_CLIENTS_LIST", value = "[\"clientA\",\"clientB\"]")
     @Test
     void shouldLogAppropriateMessages() throws Exception {
-        // no need to mock context.getLogger() as the function uses its own slf4j logger
+        // Test that multiple clients are processed and messages are sent for each
 
         LocalDate fixedToday = LocalDate.of(2025, 9, 23);
         String mockEndpoint = "https://hooks.slack-mock.com/services/test/webhook";
@@ -165,6 +165,13 @@ class SlackReportingTimerTriggeredTest {
                         "clientA",
                         "pspX",
                         "CP",
+                        List.of("OK", "KO", "ABBANDONATO", "IN CORSO", "DA ANALIZZARE")
+                ),
+                new AggregatedStatusGroup(
+                        "2025-09-16",
+                        "clientB",
+                        "pspY",
+                        "SATY",
                         List.of("OK", "KO", "ABBANDONATO", "IN CORSO", "DA ANALIZZARE")
                 )
         );
@@ -192,11 +199,25 @@ class SlackReportingTimerTriggeredTest {
                             any(LocalDate.class),
                             any(LocalDate.class),
                             any(Logger.class),
-                            any()
+                            eq("clientA")
                     )
             ).thenReturn(
                     new String[] {
-                            "Test message"
+                            "Message for clientA"
+                    }
+            );
+
+            mockedUtils.when(
+                    () -> SlackDateRangeReportMessageUtils.createAggregatedTableWeeklyReport(
+                            anyList(),
+                            any(LocalDate.class),
+                            any(LocalDate.class),
+                            any(Logger.class),
+                            eq("clientB")
+                    )
+            ).thenReturn(
+                    new String[] {
+                            "Message for clientB"
                     }
             );
 
@@ -219,8 +240,9 @@ class SlackReportingTimerTriggeredTest {
 
                 function.run("timerInfo", mockContext);
 
-                // Verify that the webhook client was called with the expected message
-                verify(mockSlackWebhookClient, atLeastOnce()).postMessageToWebhook("Test message");
+                // Verify that webhook client was called for both clients
+                verify(mockSlackWebhookClient, times(1)).postMessageToWebhook("Message for clientA");
+                verify(mockSlackWebhookClient, times(1)).postMessageToWebhook("Message for clientB");
             }
         }
     }
