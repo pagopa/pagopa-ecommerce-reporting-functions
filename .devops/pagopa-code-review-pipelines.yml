@@ -56,7 +56,7 @@ steps:
       codeCoverageToolOption: 'JaCoCo'
       effectivePomSkip: false
       isJacocoCoverageReportXML: true
-      sqMavenPluginVersionChoice: 'latest'
+      sqMavenPluginVersionChoice: 'pom'
 
   - task: SonarCloudPublish@3
     displayName: 'Publish SonarCloud results on build summary'

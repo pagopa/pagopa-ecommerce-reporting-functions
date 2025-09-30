@@ -18,6 +18,7 @@
         <spring-cloud-azure.version>4.0.0</spring-cloud-azure.version>
         <jacoco.version>0.8.8</jacoco.version>
         <spotless.version>2.28.0</spotless.version>
+        <sonar.maven.plugin.version>5.2.0.4988</sonar.maven.plugin.version>
     </properties>
     <dependencies>
         <dependency>
@@ -267,6 +268,11 @@
                         --add-opens java.base/java.lang=ALL-UNNAMED
                     </argLine>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.sonarsource.scanner.maven</groupId>
+                <artifactId>sonar-maven-plugin</artifactId>
+                <version>${sonar.maven.plugin.version}</version>
             </plugin>
         </plugins>
     </build>
