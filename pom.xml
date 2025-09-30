@@ -11,7 +11,7 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <java.version>17</java.version>
-        <azure.functions.maven.plugin.version>1.27.0</azure.functions.maven.plugin.version>
+        <azure.functions.maven.plugin.version>1.35.0</azure.functions.maven.plugin.version>
         <azure.functions.java.library.version>3.1.0</azure.functions.java.library.version>
         <azure.data.tables.java.library.version>12.5.3</azure.data.tables.java.library.version>
         <functionAppName>pagopa-ecommerce-reporting-functions</functionAppName>
