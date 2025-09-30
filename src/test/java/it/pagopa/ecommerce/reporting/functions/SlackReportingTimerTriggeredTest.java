@@ -262,7 +262,7 @@ class SlackReportingTimerTriggeredTest {
                 null
         );
 
-        assertThrows(NullPointerException.class, () -> function.run("timerInfo", mockContext));
+        assertThrows(IllegalArgumentException.class, () -> function.run("timerInfo", mockContext));
     }
 
     @SetEnvironmentVariable(key = "ECOMMERCE_CLIENTS_LIST", value = "[\"CLIENT_1\",\"CLIENT2\"]")
