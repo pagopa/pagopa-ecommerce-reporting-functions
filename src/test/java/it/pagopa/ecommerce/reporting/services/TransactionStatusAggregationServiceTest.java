@@ -79,9 +79,9 @@ class TransactionStatusAggregationServiceTest {
         assertEquals(4, counts.size());
 
         // Verify logging
-        verify(mockLogger, atLeastOnce()).info(contains("aggregateStatusCountByClientAndPaymentType"));
-        verify(mockLogger, atLeastOnce()).info(contains("Aggregation completed"));
-        verify(mockLogger, atLeastOnce()).info(contains("Aggregation filtered"));
+        verify(mockLogger).info("[aggregateStatusCountByClientAndPaymentType] Execution started.");
+        verify(mockLogger).info("[aggregateStatusCountByClientAndPaymentType] Aggregation completed {}", 1);
+        verify(mockLogger).info("[aggregateStatusCountByClientAndPaymentType] Aggregation filtered {}", 1);
     }
 
     @Test

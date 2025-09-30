@@ -538,6 +538,6 @@ class SlackDateRangeReportMessageUtilsTest {
         assertEquals(3, blocks.size(), "Expected 1 table block + 1 title block + 1 divider block");
         assertEquals("table", blocks.get(1).get("type").asText());
 
-        verify(mockLogger).info("Created 1 Slack messages");
+        verify(mockLogger).info("Created {} Slack messages", 1);
     }
 }
