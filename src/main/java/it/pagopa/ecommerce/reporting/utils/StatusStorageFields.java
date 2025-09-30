@@ -9,6 +9,7 @@ public class StatusStorageFields {
             "ACTIVATED",
             "CLOSED",
             "NOTIFIED_OK",
+            "NOTIFIED_KO",
             "EXPIRED",
             "REFUNDED",
             "CANCELED",
