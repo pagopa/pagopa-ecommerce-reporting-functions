@@ -324,16 +324,6 @@ class SlackDateRangeReportMessageUtilsTest {
         assertEquals(emoji, textBlock.get("emoji"));
     }
 
-    // Helper method to count number of blocks
-    private int countOccurrences(
-                                 String jsonStr
-    ) throws JsonProcessingException {
-        ObjectMapper objectMapper = new ObjectMapper();
-        Map<String, Object> messageMap = objectMapper.readValue(jsonStr, Map.class);
-        List<Object> blocks = (List<Object>) messageMap.get("blocks");
-        return blocks.size();
-    }
-
     @Test
     void shouldIncrementCorrectly() {
         // Given

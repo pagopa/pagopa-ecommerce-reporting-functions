@@ -65,7 +65,7 @@ public class SlackDateRangeReportMessageUtils {
         Map<String, Object> message = Map.of(BLOCKS, messageBlocks);
         messages.add(OBJECT_MAPPER.writeValueAsString(message));
 
-        logger.info("Created " + messages.size() + " Slack messages");
+        logger.info("Created {} Slack messages", messages.size());
         return messages.toArray(new String[0]);
     }
 
@@ -88,9 +88,9 @@ public class SlackDateRangeReportMessageUtils {
         Map<String, Object> message = Map.of(BLOCKS, messageBlocks);
         messages.add(OBJECT_MAPPER.writeValueAsString(message));
 
-        logger.info("Created " + messages.size() + " Slack messages");
+        logger.info("Created {} Slack messages", messages.size());
         return messages.toArray(new String[0]);
-    };
+    }
 
     /**
      * Creates an empty report message when no data is available.

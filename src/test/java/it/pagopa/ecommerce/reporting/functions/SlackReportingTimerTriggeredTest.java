@@ -219,9 +219,8 @@ class SlackReportingTimerTriggeredTest {
 
                 function.run("timerInfo", mockContext);
 
-                // no logging verification needed since the function uses a static SLF4J logger
-                // the important thing is that the function executes without error and calls the
-                // webhook
+                // Verify that the webhook client was called with the expected message
+                verify(mockSlackWebhookClient, atLeastOnce()).postMessageToWebhook("Test message");
             }
         }
     }
