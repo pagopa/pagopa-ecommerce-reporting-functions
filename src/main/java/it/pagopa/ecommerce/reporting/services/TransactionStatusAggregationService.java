@@ -13,6 +13,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Service class to aggregate status counts for transactions within a given date
@@ -119,58 +120,110 @@ public class TransactionStatusAggregationService {
 
         for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
             String partitionKey = formatter.format(date);
-
             PagedIterable<TableEntity> entities = tableClient.listEntities(
                     new ListEntitiesOptions().setFilter(String.format("PartitionKey eq '%s'", partitionKey)),
                     null,
                     null
             );
-
-            for (TableEntity entity : entities) {
-                String clientId = String.valueOf(entity.getProperty("clientId"));
-                String paymentType = String.valueOf(entity.getProperty("paymentTypeCode"));
-
-                // key: client + paymentType
-                String key = String.join("|", clientId, paymentType);
-
-                AggregatedStatusGroup group = aggregatedMap.get(key);
-                if (group == null) {
-                    group = new AggregatedStatusGroup(
-                            null, // no longer grouping by date
-                            clientId,
-                            null, // pspId not needed anymore
-                            paymentType,
-                            new ArrayList<>(Set.of(ABANDONED, TO_BE_ANALYZED, KO, OK, IN_PROGRESS))
-                    );
-                    aggregatedMap.put(key, group);
-                }
-
-                for (String rawStatus : StatusStorageFields.values) {
-                    Object raw = entity.getProperty(rawStatus);
-                    int count = raw != null ? Integer.parseInt(raw.toString()) : 0;
-
-                    if (count > 0) {
-                        String category = STATUS_TO_CATEGORY.getOrDefault(rawStatus, IN_PROGRESS);
-                        group.incrementStatus(category, count);
-                    }
-                }
-            }
+            processEntitiesForDate(entities, aggregatedMap);
         }
 
         List<AggregatedStatusGroup> aggregated = new ArrayList<>(aggregatedMap.values());
+        aggregated.forEach(AggregatedStatusGroup::filterZeroCountStatuses);
 
-        for (AggregatedStatusGroup group : aggregated) {
-            group.filterZeroCountStatuses();
-        }
-
-        logger.info("[aggregateStatusCountByClientAndPaymentType] Aggregation completed " + aggregated.size());
-        // TODO: remove if we also want all 0s rows
+        logger.info("[aggregateStatusCountByClientAndPaymentType] Aggregation completed {}", aggregated.size());
         List<AggregatedStatusGroup> filteredAggregated = aggregated.stream()
                 .filter(aggregatedStatusGroup -> !aggregatedStatusGroup.getStatusCounts().isEmpty())
                 .toList();
 
-        logger.info("[aggregateStatusCountByClientAndPaymentType] Aggregation filtered " + filteredAggregated.size());
-
+        logger.info("[aggregateStatusCountByClientAndPaymentType] Aggregation filtered {}", filteredAggregated.size());
         return filteredAggregated;
+    }
+
+    /**
+     * Processes all table entities for a specific date and updates the aggregated
+     * status map.
+     * <p>
+     * This method iterates through all entities retrieved for a given date
+     * partition and delegates the processing of each individual entity to
+     * {@link #processEntity(TableEntity, Map)}.
+     *
+     * @param entities      the collection of table entities to process for the date
+     * @param aggregatedMap the map containing aggregated status groups, keyed by
+     *                      clientId|paymentType
+     */
+    private void processEntitiesForDate(
+                                        PagedIterable<TableEntity> entities,
+                                        Map<String, AggregatedStatusGroup> aggregatedMap
+    ) {
+        for (TableEntity entity : entities) {
+            processEntity(entity, aggregatedMap);
+        }
+    }
+
+    /**
+     * Processes a single table entity and updates the corresponding aggregated
+     * status group.
+     * <p>
+     * Extracts the clientId and paymentTypeCode from the entity to create a unique
+     * key. If no aggregated group exists for this key, creates a new one with
+     * default status categories. Then processes all status fields for this entity
+     * using {@link #processStatusFields(TableEntity, AggregatedStatusGroup)}.
+     *
+     * @param entity        the table entity to process
+     * @param aggregatedMap the map containing aggregated status groups, keyed by
+     *                      clientId|paymentType
+     */
+    private void processEntity(
+                               TableEntity entity,
+                               Map<String, AggregatedStatusGroup> aggregatedMap
+    ) {
+        String clientId = String.valueOf(entity.getProperty("clientId"));
+        String paymentType = String.valueOf(entity.getProperty("paymentTypeCode"));
+        String key = String.join("|", clientId, paymentType);
+
+        AggregatedStatusGroup group = aggregatedMap.computeIfAbsent(
+                key,
+                k -> new AggregatedStatusGroup(
+                        null, // no longer grouping by date
+                        clientId,
+                        null, // pspId not needed anymore
+                        paymentType,
+                        new ArrayList<>(Set.of(ABANDONED, TO_BE_ANALYZED, KO, OK, IN_PROGRESS))
+                )
+        );
+
+        processStatusFields(entity, group);
+    }
+
+    /**
+     * Processes all status fields from a table entity and updates the aggregated
+     * status group.
+     * <p>
+     * Iterates through all status fields defined in
+     * {@link StatusStorageFields#values} and extracts the count for each status. If
+     * the count is greater than zero, maps the raw status to its corresponding
+     * category using {@link #STATUS_TO_CATEGORY} and increments the aggregated
+     * group's status count.
+     * <p>
+     * Raw status values that are not found in the mapping default to
+     * {@link #IN_PROGRESS}.
+     *
+     * @param entity the table entity containing status field data
+     * @param group  the aggregated status group to update with status counts
+     */
+    private void processStatusFields(
+                                     TableEntity entity,
+                                     AggregatedStatusGroup group
+    ) {
+        for (String rawStatus : StatusStorageFields.values) {
+            Object raw = entity.getProperty(rawStatus);
+            int count = raw != null ? Integer.parseInt(raw.toString()) : 0;
+
+            if (count > 0) {
+                String category = STATUS_TO_CATEGORY.getOrDefault(rawStatus, IN_PROGRESS);
+                group.incrementStatus(category, count);
+            }
+        }
     }
 }
