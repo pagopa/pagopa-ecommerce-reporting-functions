@@ -145,7 +145,7 @@ public class TransactionStatusAggregationService {
      * status map.
      * <p>
      * This method iterates through all entities retrieved for a given date
-     * partition and delegates the processing of each individual entity to
+     * partition and delegates the processing of each entity to
      * {@link #processEntity(TableEntity, Map)}.
      *
      * @param entities      the collection of table entities to process for the date
