@@ -61,9 +61,7 @@ public class TransactionStatusAggregationService {
             Map.entry("CLOSURE_ERROR", TO_BE_ANALYZED),
             Map.entry("EXPIRED", TO_BE_ANALYZED),
             Map.entry("REFUND_ERROR", TO_BE_ANALYZED),
-            Map.entry("NOTIFICATION_ERROR", TO_BE_ANALYZED),
 
-            Map.entry("NOTIFIED_KO", KO),
             Map.entry("REFUNDED", KO),
             Map.entry("UNAUTHORIZED", KO),
 
@@ -73,9 +71,9 @@ public class TransactionStatusAggregationService {
             Map.entry("AUTHORIZATION_REQUESTED", IN_PROGRESS),
             Map.entry("AUTHORIZATION_COMPLETED", IN_PROGRESS),
             Map.entry("CLOSED", IN_PROGRESS),
-            Map.entry("NOTIFICATION_REQUESTED", IN_PROGRESS),
             Map.entry("REFUND_REQUESTED", IN_PROGRESS),
-            Map.entry("CANCELLATION_REQUESTED", IN_PROGRESS)
+            Map.entry("CANCELLATION_REQUESTED", IN_PROGRESS),
+            Map.entry("CLOSURE_REQUESTED", IN_PROGRESS)
     );
 
     /**
