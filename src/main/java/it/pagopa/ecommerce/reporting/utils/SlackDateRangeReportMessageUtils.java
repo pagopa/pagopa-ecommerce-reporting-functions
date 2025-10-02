@@ -6,7 +6,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.logging.Logger;
+import java.util.stream.Collectors;
+import org.slf4j.Logger;
 
 /**
  * Builds Slack messages using Block Kit elements for date range reports.
@@ -17,8 +18,10 @@ import java.util.logging.Logger;
 public class SlackDateRangeReportMessageUtils {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.ITALIAN);
-    private static final String PAGOPA_LOGO_URL = "https://developer.pagopa.it/gitbook/docs/8phwN5u2QXllSKsqBjQU/.gitbook/assets/logo_asset.png";
-    private static final int MAX_BLOCKS_PER_MESSAGE = 40; // Reduced from 49 for safety
+    private static final String PAGOPA_LOGO_URL = "https://selfcare.pagopa.it/assets/logo_pagopacorp.png";
+    public static final String PLAIN_TEXT = "plain_text";
+    public static final String BLOCKS = "blocks";
+    public static final String ELEMENTS = "elements";
 
     /**
      * Creates an aggregated weekly report message for Slack, split into multiple
@@ -28,15 +31,18 @@ public class SlackDateRangeReportMessageUtils {
      * @param startDate        Report start date
      * @param endDate          Report end date
      * @param logger           Logger instance
+     * @param clientId         Client ID
      * @return Array of formatted Slack messages in JSON format
      * @throws JsonProcessingException If JSON conversion fails
      */
-    public static String[] createAggregatedWeeklyReport(
-                                                        List<AggregatedStatusGroup> aggregatedGroups,
-                                                        LocalDate startDate,
-                                                        LocalDate endDate,
-                                                        Logger logger
+    public static String[] createAggregatedTableWeeklyReport(
+                                                             List<AggregatedStatusGroup> aggregatedGroups,
+                                                             LocalDate startDate,
+                                                             LocalDate endDate,
+                                                             Logger logger,
+                                                             String clientId
     ) throws JsonProcessingException {
+
         if (aggregatedGroups == null || aggregatedGroups.isEmpty()) {
             logger.info("No aggregated groups to report");
             return new String[] {
@@ -44,59 +50,45 @@ public class SlackDateRangeReportMessageUtils {
             };
         }
 
-        List<AggregatedStatusGroup> sortedGroups = sortAggregatedGroups(aggregatedGroups);
+        List<AggregatedStatusGroup> sortedGroups = sortAggregatedGroups(aggregatedGroups, clientId);
+
+        // Build table blocks
+        List<Map<String, Object>> tableBlocks = createTableBlocks(sortedGroups);
+
+        // Split blocks into multiple messages if needed
+        List<String> messages = new ArrayList<>();
+        Map<String, Object> clientBlock = createTextBlock("header", PLAIN_TEXT, "Client: " + clientId, false);
+        tableBlocks.add(0, clientBlock);
+        tableBlocks.add(createDivider());
+        List<Map<String, Object>> messageBlocks = new ArrayList<>(tableBlocks);
+
+        Map<String, Object> message = Map.of(BLOCKS, messageBlocks);
+        messages.add(OBJECT_MAPPER.writeValueAsString(message));
+
+        logger.info("Created {} Slack messages", messages.size());
+        return messages.toArray(new String[0]);
+    }
+
+    public static String[] createInitialBlock(
+                                              LocalDate startDate,
+                                              LocalDate endDate,
+                                              Logger logger
+    ) throws JsonProcessingException {
         String formattedStartDate = formatDate(startDate);
         String formattedEndDate = formatDate(endDate);
-
-        // First message with header
-        List<Map<String, Object>> firstMessageBlocks = new ArrayList<>();
-        firstMessageBlocks.add(createHeaderBlock(formattedStartDate, formattedEndDate));
-        firstMessageBlocks.add(createImageBlock());
-        firstMessageBlocks.add(createHeaderDescriptionBlock(formattedStartDate, formattedEndDate));
-        firstMessageBlocks.add(createDivider());
-
-        // Add some groups to first message if space allows
-        int groupsInFirstMessage = addGroupsToBlocks(
-                sortedGroups,
-                0,
-                MAX_BLOCKS_PER_MESSAGE - firstMessageBlocks.size(),
-                firstMessageBlocks
-        );
-
-        // Create first message
         List<String> messages = new ArrayList<>();
-        Map<String, Object> firstMessage = new HashMap<>();
-        firstMessage.put("blocks", firstMessageBlocks);
-        messages.add(OBJECT_MAPPER.writeValueAsString(firstMessage));
+        List<Map<String, Object>> messageBlocks = new ArrayList<>();
 
-        // Create additional messages for remaining groups
-        int remainingGroups = sortedGroups.size() - groupsInFirstMessage;
-        if (remainingGroups > 0) {
-            int currentGroupIndex = groupsInFirstMessage;
+        // Add header, image, divider to each message
+        messageBlocks.add(createHeaderBlock(formattedStartDate, formattedEndDate));
+        messageBlocks.add(createImageBlock());
+        messageBlocks.add(createHeaderDescriptionBlock(formattedStartDate, formattedEndDate));
+        messageBlocks.add(createDivider());
 
-            while (currentGroupIndex < sortedGroups.size()) {
-                List<Map<String, Object>> messageBlocks = new ArrayList<>();
+        Map<String, Object> message = Map.of(BLOCKS, messageBlocks);
+        messages.add(OBJECT_MAPPER.writeValueAsString(message));
 
-                // Add groups to this message
-                int groupsAdded = addGroupsToBlocks(
-                        sortedGroups,
-                        currentGroupIndex,
-                        MAX_BLOCKS_PER_MESSAGE,
-                        messageBlocks
-                );
-
-                // Create message
-                Map<String, Object> message = new HashMap<>();
-                if (!messageBlocks.isEmpty()) {
-                    message.put("blocks", messageBlocks);
-                    messages.add(OBJECT_MAPPER.writeValueAsString(message));
-                }
-
-                currentGroupIndex += groupsAdded;
-            }
-        }
-
-        logger.info("Created " + messages.size() + " slack messages");
+        logger.info("Created {} Slack messages", messages.size());
         return messages.toArray(new String[0]);
     }
 
@@ -124,42 +116,8 @@ public class SlackDateRangeReportMessageUtils {
         );
 
         Map<String, Object> message = new HashMap<>();
-        message.put("blocks", blocks);
+        message.put(BLOCKS, blocks);
         return OBJECT_MAPPER.writeValueAsString(message);
-    }
-
-    /**
-     * Adds groups to a block list and returns the number of groups added.
-     */
-    private static int addGroupsToBlocks(
-                                         List<AggregatedStatusGroup> groups,
-                                         int startIndex,
-                                         int maxBlocksAvailable,
-                                         List<Map<String, Object>> blocks
-    ) {
-
-        int blocksPerGroup = 3; // Header + Details + Divider
-        int maxGroupsToAdd = maxBlocksAvailable / blocksPerGroup;
-        int groupsToAdd = Math.min(maxGroupsToAdd, groups.size() - startIndex);
-
-        for (int i = 0; i < groupsToAdd; i++) {
-            AggregatedStatusGroup group = groups.get(startIndex + i);
-
-            // Only add groups that have status counts
-            if (!group.getStatusCounts().isEmpty()) {
-                blocks.add(createGroupHeaderSection(group));
-
-                // Only add status details if there are any
-                String statusDetails = formatStatusDetails(group.getStatusCounts());
-                if (!statusDetails.trim().isEmpty()) {
-                    blocks.add(createStatusDetailsSection(group));
-                }
-
-                blocks.add(createDivider());
-            }
-        }
-
-        return groupsToAdd;
     }
 
     /**
@@ -168,8 +126,15 @@ public class SlackDateRangeReportMessageUtils {
      * @param aggregatedGroups Groups to sort
      * @return Sorted list of groups
      */
-    static List<AggregatedStatusGroup> sortAggregatedGroups(List<AggregatedStatusGroup> aggregatedGroups) {
+    static List<AggregatedStatusGroup> sortAggregatedGroups(
+                                                            List<AggregatedStatusGroup> aggregatedGroups,
+                                                            String clientId
+    ) {
         List<AggregatedStatusGroup> sortedGroups = new ArrayList<>(aggregatedGroups);
+        sortedGroups = sortedGroups.stream()
+                .filter(group -> clientId.equals(group.getClientId()))
+                .collect(Collectors.toList());
+
         sortedGroups.sort(
                 Comparator.comparing(
                         group -> group.getStatusCounts().getOrDefault("ACTIVATED", 0),
@@ -253,10 +218,11 @@ public class SlackDateRangeReportMessageUtils {
     static Map<String, Object> createHeaderBlock(
                                                  String startDate,
                                                  String endDate
+
     ) {
         return createTextBlock(
                 "header",
-                "plain_text",
+                PLAIN_TEXT,
                 SlackMessageConstants.PAGOPA_EMOJI + " Report Settimanale Transazioni " + startDate + " - " + endDate
                         + " " + SlackMessageConstants.PAGOPA_EMOJI,
                 true
@@ -269,7 +235,7 @@ public class SlackDateRangeReportMessageUtils {
     ) {
         return createTextBlock(
                 "section",
-                "plain_text",
+                PLAIN_TEXT,
                 "Di seguito il report suddiviso per Client, PSP e metodo pagamento di pagamento per l'intervallo di tempo dal "
                         + startDate + " al " + endDate,
                 true
@@ -342,5 +308,117 @@ public class SlackDateRangeReportMessageUtils {
 
         block.put("text", text);
         return block;
+    }
+
+    static List<Map<String, Object>> createTableBlocks(List<AggregatedStatusGroup> groups) {
+        List<Map<String, Object>> blocks = new ArrayList<>();
+
+        List<List<Map<String, Object>>> rows = new ArrayList<>();
+
+        rows.add(createHeaderRow());
+
+        for (AggregatedStatusGroup group : groups) {
+            rows.add(createDataRow(group));
+        }
+
+        // Table block
+        Map<String, Object> tableBlock = new HashMap<>();
+        tableBlock.put("type", "table");
+        tableBlock.put("rows", rows);
+
+        blocks.add(tableBlock);
+
+        return blocks;
+    }
+
+    private static List<Map<String, Object>> createHeaderRow() {
+        List<Map<String, Object>> headerCells = new ArrayList<>();
+
+        for (TableHeader header : TableHeader.values()) {
+            Map<String, Object> cell = createBoldCell(header.getLabel());
+            headerCells.add(cell);
+        }
+
+        return headerCells;
+    }
+
+    private static List<Map<String, Object>> createDataRow(AggregatedStatusGroup group) {
+        List<Map<String, Object>> cells = new ArrayList<>();
+
+        String metodo = group.getPaymentTypeCode();
+        int total = group.getStatusCounts().values().stream().mapToInt(Integer::intValue).sum();
+
+        String ok = formatPercentCount(group.getStatusCounts().get("OK"), total);
+        String ko = formatPercentCount(group.getStatusCounts().get("KO"), total);
+        String abbandonato = formatPercentCount(group.getStatusCounts().get("ABBANDONATO"), total);
+        String inCorso = formatPercentCount(group.getStatusCounts().get("IN CORSO"), total);
+        String daAnalizzare = formatPercentCount(group.getStatusCounts().get("DA ANALIZZARE"), total);
+
+        cells.add(createTextCell(metodo));
+        cells.add(createTextCell(ok));
+        cells.add(createTextCell(ko));
+        cells.add(createTextCell(abbandonato));
+        cells.add(createTextCell(inCorso));
+        cells.add(createTextCell(daAnalizzare));
+
+        return cells;
+    }
+
+    private static Map<String, Object> createBoldCell(String text) {
+        Map<String, Object> style = new HashMap<>();
+        style.put("bold", true);
+
+        Map<String, Object> textObj = new HashMap<>();
+        textObj.put("type", "text");
+        textObj.put("text", text);
+        textObj.put("style", style);
+
+        List<Map<String, Object>> elements = new ArrayList<>();
+        elements.add(textObj);
+
+        Map<String, Object> richTextSection = new HashMap<>();
+        richTextSection.put("type", "rich_text_section");
+        richTextSection.put(ELEMENTS, elements);
+
+        List<Map<String, Object>> richTextElements = new ArrayList<>();
+        richTextElements.add(richTextSection);
+
+        Map<String, Object> cell = new HashMap<>();
+        cell.put("type", "rich_text");
+        cell.put(ELEMENTS, richTextElements);
+
+        return cell;
+    }
+
+    private static Map<String, Object> createTextCell(String text) {
+        Map<String, Object> textObj = new HashMap<>();
+        textObj.put("type", "text");
+        textObj.put("text", text);
+
+        List<Map<String, Object>> elements = new ArrayList<>();
+        elements.add(textObj);
+
+        Map<String, Object> richTextSection = new HashMap<>();
+        richTextSection.put("type", "rich_text_section");
+        richTextSection.put(ELEMENTS, elements);
+
+        List<Map<String, Object>> richTextElements = new ArrayList<>();
+        richTextElements.add(richTextSection);
+
+        Map<String, Object> cell = new HashMap<>();
+        cell.put("type", "rich_text");
+        cell.put(ELEMENTS, richTextElements);
+
+        return cell;
+    }
+
+    private static String formatPercentCount(
+                                             Integer count,
+                                             int total
+    ) {
+        if (count == null || total == 0)
+            return "0% (0)";
+        int percent = (int) Math.round((count * 100.0) / total);
+        return percent + "% (" + count + ")";
     }
 }

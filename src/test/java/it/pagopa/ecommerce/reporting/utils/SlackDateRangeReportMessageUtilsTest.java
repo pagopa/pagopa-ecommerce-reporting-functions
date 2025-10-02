@@ -1,6 +1,7 @@
 package it.pagopa.ecommerce.reporting.utils;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -9,13 +10,17 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
 import java.util.*;
-import java.util.logging.Logger;
-
+import org.slf4j.Logger;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.verify;
 
-@ExtendWith(MockitoExtension.class)
+import java.lang.reflect.Method;
+
 class SlackDateRangeReportMessageUtilsTest {
 
+    @ExtendWith(MockitoExtension.class)
+
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     @Mock
     private Logger mockLogger;
 
@@ -93,48 +98,70 @@ class SlackDateRangeReportMessageUtilsTest {
     }
 
     @Test
-    void shouldSortByActivatedCountDescending() {
+    void shouldFilterByClientIdAndSortByActivated() {
         // Given
-        List<AggregatedStatusGroup> groups = new ArrayList<>();
-
         AggregatedStatusGroup group1 = new AggregatedStatusGroup(
-                "2023-01-01",
-                "client1",
-                "psp1",
+                "2025-09-16",
+                "clientA",
+                "pspX",
                 "CP",
-                Arrays.asList("ACTIVATED", "NOTIFIED_OK")
+                List.of("OK", "KO")
         );
-        group1.incrementStatus("ACTIVATED", 50);
+        group1.incrementStatus("ACTIVATED", 5);
+        group1.incrementStatus("FAILED", 2);
 
         AggregatedStatusGroup group2 = new AggregatedStatusGroup(
-                "2023-01-01",
-                "client2",
-                "psp2",
-                "PPAL",
-                Arrays.asList("ACTIVATED", "NOTIFIED_OK")
+                "2025-09-16",
+                "clientA",
+                "pspY",
+                "CP",
+                List.of("OK", "KO")
         );
-        group2.incrementStatus("ACTIVATED", 100);
+        group2.incrementStatus("ACTIVATED", 10);
+        group2.incrementStatus("KO", 1);
 
         AggregatedStatusGroup group3 = new AggregatedStatusGroup(
-                "2023-01-01",
-                "client3",
-                "psp3",
+                "2025-09-16",
+                "clientB",
+                "pspZ",
                 "CP",
-                Arrays.asList("ACTIVATED", "NOTIFIED_OK")
+                List.of("OK", "KO")
         );
-        group3.incrementStatus("ACTIVATED", 25);
+        group3.incrementStatus("ACTIVATED", 7);
 
-        groups.add(group1);
-        groups.add(group2);
-        groups.add(group3);
+        List<AggregatedStatusGroup> groups = List.of(group1, group2, group3);
 
         // When
-        List<AggregatedStatusGroup> result = SlackDateRangeReportMessageUtils.sortAggregatedGroups(groups);
+        List<AggregatedStatusGroup> sorted = SlackDateRangeReportMessageUtils.sortAggregatedGroups(groups, "clientA");
 
         // Then
-        assertEquals("client2", result.get(0).getClientId()); // 100
-        assertEquals("client1", result.get(1).getClientId()); // 50
-        assertEquals("client3", result.get(2).getClientId()); // 25
+        // Only clientA groups
+        assertEquals(2, sorted.size());
+        assertTrue(sorted.stream().allMatch(g -> "clientA".equals(g.getClientId())));
+
+        // Sorted descending by ACTIVATED
+        assertEquals(10, sorted.get(0).getStatusCounts().get("ACTIVATED"));
+        assertEquals(5, sorted.get(1).getStatusCounts().get("ACTIVATED"));
+    }
+
+    @Test
+    void shouldReturnEmptyListIfNoClientMatches() {
+        // Given
+        AggregatedStatusGroup group = new AggregatedStatusGroup(
+                "2025-09-16",
+                "clientB",
+                "pspX",
+                "CP",
+                List.of("OK")
+        );
+        group.incrementStatus("ACTIVATED", 3);
+
+        // When
+        List<AggregatedStatusGroup> sorted = SlackDateRangeReportMessageUtils
+                .sortAggregatedGroups(List.of(group), "clientA");
+
+        // Then
+        assertTrue(sorted.isEmpty(), "No groups should be returned for unmatched clientId");
     }
 
     @Test
@@ -164,11 +191,14 @@ class SlackDateRangeReportMessageUtilsTest {
         groups.add(group2);
 
         // When
-        List<AggregatedStatusGroup> result = SlackDateRangeReportMessageUtils.sortAggregatedGroups(groups);
+        List<AggregatedStatusGroup> resultClient1 = SlackDateRangeReportMessageUtils
+                .sortAggregatedGroups(groups, "client1");
+        List<AggregatedStatusGroup> resultClient2 = SlackDateRangeReportMessageUtils
+                .sortAggregatedGroups(groups, "client2");
 
         // Then
-        assertEquals("client1", result.get(0).getClientId()); // 50
-        assertEquals("client2", result.get(1).getClientId()); // 0 (default)
+        assertEquals("client1", resultClient1.get(0).getClientId()); // 50
+        assertEquals("client2", resultClient2.get(0).getClientId()); // 0 (default)
     }
 
     @Test
@@ -201,7 +231,7 @@ class SlackDateRangeReportMessageUtilsTest {
 
         // Then
         assertEquals("image", result.get("type"));
-        assertTrue(result.get("image_url").toString().contains("logo_asset.png"));
+        assertTrue(result.get("image_url").toString().contains("logo_pagopacorp.png"));
         assertEquals("PagoPA Logo", result.get("alt_text"));
     }
 
@@ -295,138 +325,6 @@ class SlackDateRangeReportMessageUtilsTest {
     }
 
     @Test
-    void shouldCreateCompleteReport() throws Exception {
-        // Given
-        List<AggregatedStatusGroup> groups = new ArrayList<>();
-
-        AggregatedStatusGroup group1 = new AggregatedStatusGroup(
-                "2023-01-01",
-                "client1",
-                "psp1",
-                "CP",
-                Arrays.asList("ACTIVATED", "NOTIFIED_OK")
-        );
-        group1.incrementStatus("ACTIVATED", 100);
-        group1.incrementStatus("NOTIFIED_OK", 80);
-
-        AggregatedStatusGroup group2 = new AggregatedStatusGroup(
-                "2023-01-01",
-                "client2",
-                "psp2",
-                "PPAL",
-                Arrays.asList("ACTIVATED", "EXPIRED")
-        );
-        group2.incrementStatus("ACTIVATED", 50);
-        group2.incrementStatus("EXPIRED", 10);
-
-        groups.add(group1);
-        groups.add(group2);
-
-        LocalDate startDate = LocalDate.of(2023, 1, 1);
-        LocalDate endDate = LocalDate.of(2023, 1, 7);
-
-        // When
-        String[] results = SlackDateRangeReportMessageUtils
-                .createAggregatedWeeklyReport(groups, startDate, endDate, mockLogger);
-
-        // Then
-        assertNotNull(results);
-        assertTrue(results.length > 0, "Should return at least one message");
-
-        // Print the results for debugging
-        for (int i = 0; i < results.length; i++) {
-            System.out.println("Report result " + (i + 1) + ": " + results[i]);
-        }
-
-        // Check first message structure
-        String firstMessage = results[0];
-        assertTrue(firstMessage.contains("blocks"), "Result should contain 'blocks'");
-
-        // Check date formatting
-        String formattedStartDate = SlackDateRangeReportMessageUtils.formatDate(startDate);
-        String formattedEndDate = SlackDateRangeReportMessageUtils.formatDate(endDate);
-
-        assertTrue(
-                firstMessage.contains(formattedStartDate),
-                "Result should contain formatted start date: " + formattedStartDate
-        );
-        assertTrue(
-                firstMessage.contains(formattedEndDate),
-                "Result should contain formatted end date: " + formattedEndDate
-        );
-
-        // Check for client and PSP IDs across all messages
-        boolean foundClient1 = false;
-        boolean foundClient2 = false;
-        boolean foundPsp1 = false;
-        boolean foundPsp2 = false;
-        boolean foundCP = false;
-        boolean foundPPAL = false;
-
-        for (String result : results) {
-            if (result.contains("client1") || result.contains("\\*client1\\*"))
-                foundClient1 = true;
-            if (result.contains("client2") || result.contains("\\*client2\\*"))
-                foundClient2 = true;
-            if (result.contains("psp1") || result.contains("\\*psp1\\*"))
-                foundPsp1 = true;
-            if (result.contains("psp2") || result.contains("\\*psp2\\*"))
-                foundPsp2 = true;
-            if (result.contains("CP") || result.contains("Carte"))
-                foundCP = true;
-            if (result.contains("PPAL") || result.contains("PayPal"))
-                foundPPAL = true;
-        }
-
-        assertTrue(foundClient1, "Results should contain client1");
-        assertTrue(foundClient2, "Results should contain client2");
-        assertTrue(foundPsp1, "Results should contain psp1");
-        assertTrue(foundPsp2, "Results should contain psp2");
-        assertTrue(foundCP, "Results should contain CP or its translation");
-        assertTrue(foundPPAL, "Results should contain PPAL or its translation");
-
-        // Verify each message has at most MAX_BLOCKS_PER_MESSAGE blocks
-        for (String result : results) {
-            int blockCount = countOccurrences(result);
-            assertTrue(
-                    blockCount <= 50,
-                    "Each message should have at most 50 blocks, but found " + blockCount
-            );
-        }
-    }
-
-    // Helper method to count number of blocks
-    private int countOccurrences(
-                                 String jsonStr
-    ) throws JsonProcessingException {
-        ObjectMapper objectMapper = new ObjectMapper();
-        Map<String, Object> messageMap = objectMapper.readValue(jsonStr, Map.class);
-        List<Object> blocks = (List<Object>) messageMap.get("blocks");
-        return blocks.size();
-    }
-
-    @Test
-    void shouldHandleEmptyGroups() throws Exception {
-        // Given
-        List<AggregatedStatusGroup> groups = new ArrayList<>();
-        LocalDate startDate = LocalDate.of(2023, 1, 1);
-        LocalDate endDate = LocalDate.of(2023, 1, 7);
-
-        // When
-        String[] results = SlackDateRangeReportMessageUtils
-                .createAggregatedWeeklyReport(groups, startDate, endDate, mockLogger);
-
-        // Then
-        assertNotNull(results);
-        assertEquals(1, results.length, "Should return exactly one message for empty groups");
-
-        String result = results[0];
-        assertTrue(result.contains("blocks"));
-        assertTrue(result.contains("1 gennaio 2023"));
-        assertTrue(result.contains("7 gennaio 2023"));
-    }
-
-    @Test
     void shouldIncrementCorrectly() {
         // Given
         AggregatedStatusGroup group = new AggregatedStatusGroup(
@@ -512,95 +410,134 @@ class SlackDateRangeReportMessageUtilsTest {
     }
 
     @Test
-    void shouldSplitReportIntoMultipleMessagesWhenExceedingMaxBlocks() throws Exception {
+    void shouldCreateEmptyReportMessageWithReflection() throws Exception {
         // Given
-        List<AggregatedStatusGroup> groups = new ArrayList<>();
-
-        // Create enough groups to exceed the 50 block limit
-        for (int i = 0; i < 20; i++) {
-            AggregatedStatusGroup group = new AggregatedStatusGroup(
-                    "2023-01-01",
-                    "client" + i,
-                    "psp" + i,
-                    "CP",
-                    Arrays.asList("ACTIVATED", "NOTIFIED_OK", "EXPIRED")
-            );
-            group.incrementStatus("ACTIVATED", 100 - i);
-            group.incrementStatus("NOTIFIED_OK", 80 - i);
-            group.incrementStatus("EXPIRED", i);
-
-            groups.add(group);
-        }
-
         LocalDate startDate = LocalDate.of(2023, 1, 1);
         LocalDate endDate = LocalDate.of(2023, 1, 7);
 
+        // Use reflection to access the private static method
+        Method method = SlackDateRangeReportMessageUtils.class
+                .getDeclaredMethod("createEmptyReportMessage", LocalDate.class, LocalDate.class);
+        method.setAccessible(true);
+
         // When
-        String[] results = SlackDateRangeReportMessageUtils
-                .createAggregatedWeeklyReport(groups, startDate, endDate, mockLogger);
+        String json = (String) method.invoke(null, startDate, endDate);
 
         // Then
-        assertNotNull(results);
-        assertTrue(results.length > 1, "Should split into multiple messages");
+        JsonNode root = OBJECT_MAPPER.readTree(json);
 
-        // Check that each message has at most 50 blocks
-        for (String result : results) {
-            int blockCount = countOccurrences(result);
-            assertTrue(
-                    blockCount <= 50,
-                    "Each message should have at most 50 blocks, but found " + blockCount
-            );
-        }
+        // Verify that "blocks" is an array with 3 elements
+        assertTrue(root.has("blocks"));
+        JsonNode blocks = root.get("blocks");
+        assertEquals(3, blocks.size());
 
-        // First message should contain header information
-        assertTrue(
-                results[0].contains("Report Settimanale Transazioni"),
-                "First message should contain report header"
+        // 1st block: header
+        JsonNode header = blocks.get(0);
+        assertEquals("header", header.get("type").asText());
+        JsonNode headerText = header.get("text");
+        assertEquals("plain_text", headerText.get("type").asText());
+        assertEquals(
+                ":pagopa: Report Settimanale Transazioni 1 gennaio 2023 - 7 gennaio 2023 :pagopa:",
+                headerText.get("text").asText()
+        );
+        assertTrue(headerText.get("emoji").asBoolean());
+
+        // 2nd block: image
+        JsonNode imageBlock = blocks.get(1);
+        assertEquals("image", imageBlock.get("type").asText());
+
+        // 3rd block: text section
+        JsonNode sectionBlock = blocks.get(2);
+        assertEquals("section", sectionBlock.get("type").asText());
+        JsonNode sectionText = sectionBlock.get("text");
+        assertEquals("mrkdwn", sectionText.get("type").asText());
+        assertEquals(
+                "Non ci sono dati da visualizzare per il periodo selezionato.",
+                sectionText.get("text").asText()
         );
     }
 
     @Test
-    void shouldIncludeAllGroupsAcrossMessages() throws Exception {
+    void shouldCreateTableBlocksWithAggregatedGroups() {
         // Given
-        List<AggregatedStatusGroup> groups = new ArrayList<>();
+        AggregatedStatusGroup group1 = new AggregatedStatusGroup(
+                "2025-09-16",
+                "clientA",
+                "pspX",
+                "CP",
+                List.of("OK", "KO", "ABBANDONATO", "IN CORSO", "DA ANALIZZARE")
+        );
 
-        // Create groups with distinct identifiable names
-        for (int i = 0; i < 15; i++) {
-            String uniqueId = "UNIQUE_ID_" + i;
-            AggregatedStatusGroup group = new AggregatedStatusGroup(
-                    "2023-01-01",
-                    uniqueId,
-                    "psp" + i,
-                    "CP",
-                    Arrays.asList("ACTIVATED", "NOTIFIED_OK")
-            );
-            group.incrementStatus("ACTIVATED", 100 - i);
-            group.incrementStatus("NOTIFIED_OK", 80 - i);
+        AggregatedStatusGroup group2 = new AggregatedStatusGroup(
+                "2025-09-16",
+                "clientB",
+                "pspY",
+                "CP",
+                List.of("OK", "KO", "ABBANDONATO", "IN CORSO", "DA ANALIZZARE")
+        );
 
-            groups.add(group);
-        }
-
-        LocalDate startDate = LocalDate.of(2023, 1, 1);
-        LocalDate endDate = LocalDate.of(2023, 1, 7);
+        List<AggregatedStatusGroup> groups = Arrays.asList(group1, group2);
 
         // When
-        String[] results = SlackDateRangeReportMessageUtils
-                .createAggregatedWeeklyReport(groups, startDate, endDate, mockLogger);
+        List<Map<String, Object>> blocks = SlackDateRangeReportMessageUtils.createTableBlocks(groups);
 
         // Then
-        // Verify all unique IDs are present across all messages
-        for (int i = 0; i < 15; i++) {
-            String uniqueId = "UNIQUE_ID_" + i;
-            boolean foundId = false;
+        assertNotNull(blocks);
+        assertEquals(1, blocks.size(), "Expected only one table block");
 
-            for (String result : results) {
-                if (result.contains(uniqueId)) {
-                    foundId = true;
-                    break;
-                }
-            }
+        Map<String, Object> tableBlock = blocks.get(0);
+        assertEquals("table", tableBlock.get("type"));
 
-            assertTrue(foundId, "Group with ID " + uniqueId + " should be included in at least one message");
-        }
+        @SuppressWarnings("unchecked")
+        List<List<Map<String, Object>>> rows = (List<List<Map<String, Object>>>) tableBlock.get("rows");
+
+        // Should have 1 header + 2 data rows
+        assertEquals(3, rows.size());
+    }
+
+    @Test
+    void shouldCreateAggregatedTableWeeklyReportWithGroups() throws JsonProcessingException {
+
+        LocalDate startDate = LocalDate.of(2025, 9, 16);
+        LocalDate endDate = LocalDate.of(2025, 9, 22);
+
+        AggregatedStatusGroup group1 = new AggregatedStatusGroup(
+                "2025-09-16",
+                "clientA",
+                "pspX",
+                "CP",
+                List.of("OK", "KO", "ABBANDONATO", "IN CORSO", "DA ANALIZZARE")
+        );
+        AggregatedStatusGroup group2 = new AggregatedStatusGroup(
+                "2025-09-16",
+                "clientB",
+                "pspY",
+                "CP",
+                List.of("OK", "KO", "ABBANDONATO", "IN CORSO", "DA ANALIZZARE")
+        );
+
+        List<AggregatedStatusGroup> groups = List.of(group1, group2);
+
+        // When
+        String[] messages = SlackDateRangeReportMessageUtils.createAggregatedTableWeeklyReport(
+                groups,
+                startDate,
+                endDate,
+                mockLogger,
+                "clientA"
+        );
+
+        // Then
+        assertNotNull(messages);
+        assertEquals(1, messages.length, "Expected 1 Slack message for small number of groups");
+
+        JsonNode root = OBJECT_MAPPER.readTree(messages[0]);
+        assertTrue(root.has("blocks"), "Message should contain blocks");
+
+        JsonNode blocks = root.get("blocks");
+        assertEquals(3, blocks.size(), "Expected 1 table block + 1 title block + 1 divider block");
+        assertEquals("table", blocks.get(1).get("type").asText());
+
+        verify(mockLogger).info("Created {} Slack messages", 1);
     }
 }

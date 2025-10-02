@@ -18,12 +18,21 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class EcommerceHelpdeskServiceClient {
 
-    private static final String API_HOST = System.getenv("HELPDESK_SERVICE_URI");
-    private static final String API_KEY = System.getenv("HELPDESK_SERVICE_API_KEY");
-    private static final String API_ENDPOINT = System.getenv("HELPDESK_SERVICE_API_ENDPOINT");
     private static ObjectMapper objectMapper = new ObjectMapper();
     private static EcommerceHelpdeskServiceClient instance = null;
     private final Logger logger;
+
+    private String apiHost() {
+        return System.getenv("HELPDESK_SERVICE_URI");
+    }
+
+    private String apiKey() {
+        return System.getenv("HELPDESK_SERVICE_API_KEY");
+    }
+
+    private String apiEndpoint() {
+        return System.getenv("HELPDESK_SERVICE_API_ENDPOINT");
+    }
 
     private EcommerceHelpdeskServiceClient(Logger logger) {
         this.logger = logger;
@@ -38,7 +47,8 @@ public class EcommerceHelpdeskServiceClient {
     ) {
         if (!isValid(clientId, "Client ID") || !isValid(pspId, "PSP ID")
                 || !isValid(paymentTypeCode, "PaymentTypeCode") || !isValid(startDate, "startDate")
-                || !isValid(endDate, "endDate") || !isValid(API_KEY, "Subscription Key")) {
+                || !isValid(endDate, "endDate") || !isValid(apiKey(), "Subscription Key")) {
+            logger.warning("Invalid fields passed");
             return objectMapper.createObjectNode();
         }
         logger.warning(
@@ -94,8 +104,8 @@ public class EcommerceHelpdeskServiceClient {
                                     OffsetDateTime startDate,
                                     OffsetDateTime endDate
     ) {
-        HttpPost httpPost = new HttpPost(API_HOST + API_ENDPOINT);
-        httpPost.setHeader("ocp-apim-subscription-key", API_KEY);
+        HttpPost httpPost = new HttpPost(apiHost() + apiEndpoint());
+        httpPost.setHeader("ocp-apim-subscription-key", apiKey());
         httpPost.setHeader("Content-Type", "application/json");
         String jsonPayload = String.format(
                 "{\"clientId\":\"%s\",\"pspId\":\"%s\",\"paymentTypeCode\":\"%s\",\"timeRange\":{\"startDate\":\"%s\",\"endDate\":\"%s\"}}",
