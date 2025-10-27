@@ -121,7 +121,8 @@ public class SlackDateRangeReportMessageUtils {
     }
 
     /**
-     * Sorts aggregated groups by ACTIVATED count in descending order.
+     * Sorts aggregated groups with "CP" (Carte) first, then alphabetically by
+     * payment type code.
      *
      * @param aggregatedGroups Groups to sort
      * @return Sorted list of groups
@@ -136,10 +137,11 @@ public class SlackDateRangeReportMessageUtils {
                 .collect(Collectors.toList());
 
         sortedGroups.sort(
-                Comparator.comparing(
-                        group -> group.getStatusCounts().getOrDefault("ACTIVATED", 0),
-                        Comparator.reverseOrder()
-                )
+                Comparator.comparing((AggregatedStatusGroup group) -> {
+                    String paymentType = group.getPaymentTypeCode();
+                    // "CP" (Carte) first, then sort alphabetically
+                    return "CP".equals(paymentType) ? "0" : "1" + paymentType;
+                })
         );
         return sortedGroups;
     }
