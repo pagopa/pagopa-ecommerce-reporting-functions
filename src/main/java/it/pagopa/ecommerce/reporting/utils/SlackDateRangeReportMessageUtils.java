@@ -238,7 +238,7 @@ public class SlackDateRangeReportMessageUtils {
         return createTextBlock(
                 "section",
                 PLAIN_TEXT,
-                "Di seguito il report suddiviso per Client, PSP e metodo pagamento di pagamento per l'intervallo di tempo dal "
+                "Di seguito il report suddiviso per client e metodo di pagamento per l'intervallo di tempo dal "
                         + startDate + " al " + endDate,
                 true
         );
