@@ -419,8 +419,8 @@ public class SlackDateRangeReportMessageUtils {
                                              int total
     ) {
         if (count == null || total == 0)
-            return "0% (0)";
-        int percent = (int) Math.round((count * 100.0) / total);
-        return percent + "% (" + count + ")";
+            return "0,000% (0)";
+        double percent = (count * 100.0) / total;
+        return String.format(Locale.ITALIAN, "%.3f%% (%d)", percent, count);
     }
 }
