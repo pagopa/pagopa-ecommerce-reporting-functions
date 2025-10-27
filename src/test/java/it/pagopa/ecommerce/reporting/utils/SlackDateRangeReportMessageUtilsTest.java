@@ -104,7 +104,7 @@ class SlackDateRangeReportMessageUtilsTest {
                 "2025-09-16",
                 "clientA",
                 "pspX",
-                "CP",
+                "PPAL",
                 List.of("OK", "KO")
         );
         group1.incrementStatus("ACTIVATED", 5);
@@ -124,7 +124,7 @@ class SlackDateRangeReportMessageUtilsTest {
                 "2025-09-16",
                 "clientB",
                 "pspZ",
-                "CP",
+                "APPL",
                 List.of("OK", "KO")
         );
         group3.incrementStatus("ACTIVATED", 7);
@@ -139,9 +139,9 @@ class SlackDateRangeReportMessageUtilsTest {
         assertEquals(2, sorted.size());
         assertTrue(sorted.stream().allMatch(g -> "clientA".equals(g.getClientId())));
 
-        // Sorted descending by ACTIVATED
-        assertEquals(10, sorted.get(0).getStatusCounts().get("ACTIVATED"));
-        assertEquals(5, sorted.get(1).getStatusCounts().get("ACTIVATED"));
+        // Sorted with CP (Carte) first, then alphabetically
+        assertEquals("CP", sorted.get(0).getPaymentTypeCode());
+        assertEquals("PPAL", sorted.get(1).getPaymentTypeCode());
     }
 
     @Test
