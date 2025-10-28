@@ -237,8 +237,15 @@ public class SlackDateRangeReportMessageUtils {
         return divider;
     }
 
-
-    // Helper method to create text blocks
+    /**
+     * Creates a text block with specified formatting.
+     *
+     * @param blockType Block type (e.g., "section", "header")
+     * @param textType  Text type (e.g., "plain_text", "mrkdwn")
+     * @param content   Text content to display
+     * @param emoji     Whether to enable emoji rendering
+     * @return Map representing text block, or null if content is empty
+     */
     static Map<String, Object> createTextBlock(
                                                String blockType,
                                                String textType,
@@ -265,6 +272,12 @@ public class SlackDateRangeReportMessageUtils {
         return block;
     }
 
+    /**
+     * Creates table blocks with header and data rows.
+     *
+     * @param groups List of aggregated status groups
+     * @return List of table block maps
+     */
     static List<Map<String, Object>> createTableBlocks(List<AggregatedStatusGroup> groups) {
         List<Map<String, Object>> blocks = new ArrayList<>();
 
@@ -286,6 +299,11 @@ public class SlackDateRangeReportMessageUtils {
         return blocks;
     }
 
+    /**
+     * Creates table header row with column labels.
+     *
+     * @return List of header cell maps
+     */
     private static List<Map<String, Object>> createHeaderRow() {
         List<Map<String, Object>> headerCells = new ArrayList<>();
 
@@ -297,6 +315,12 @@ public class SlackDateRangeReportMessageUtils {
         return headerCells;
     }
 
+    /**
+     * Creates table data row with status percentages and counts.
+     *
+     * @param group Aggregated status group
+     * @return List of data cell maps
+     */
     private static List<Map<String, Object>> createDataRow(AggregatedStatusGroup group) {
         List<Map<String, Object>> cells = new ArrayList<>();
 
@@ -322,6 +346,12 @@ public class SlackDateRangeReportMessageUtils {
         return cells;
     }
 
+    /**
+     * Creates a bold table cell without emoji.
+     *
+     * @param text Cell content to display in bold
+     * @return Map representing bold table cell
+     */
     private static Map<String, Object> createBoldCell(String text) {
         Map<String, Object> style = new HashMap<>();
         style.put("bold", true);
@@ -348,6 +378,12 @@ public class SlackDateRangeReportMessageUtils {
         return cell;
     }
 
+    /**
+     * Creates a plain table cell without formatting.
+     *
+     * @param text Cell content to display
+     * @return Map representing plain table cell
+     */
     private static Map<String, Object> createTextCell(String text) {
         Map<String, Object> textObj = new HashMap<>();
         textObj.put("type", "text");
