@@ -347,21 +347,24 @@ public class SlackDateRangeReportMessageUtils {
     private static List<Map<String, Object>> createDataRow(AggregatedStatusGroup group) {
         List<Map<String, Object>> cells = new ArrayList<>();
 
-        String metodo = group.getPaymentTypeCode();
+        String paymentMethod = group.getPaymentTypeCode();
         int total = group.getStatusCounts().values().stream().mapToInt(Integer::intValue).sum();
+
+        Integer inProgressCount = group.getStatusCounts().get("IN CORSO");
+        Integer toAnalyzeCount = group.getStatusCounts().get("DA ANALIZZARE");
 
         String ok = formatPercentCount(group.getStatusCounts().get("OK"), total);
         String ko = formatPercentCount(group.getStatusCounts().get("KO"), total);
-        String abbandonato = formatPercentCount(group.getStatusCounts().get("ABBANDONATO"), total);
-        String inCorso = formatPercentCount(group.getStatusCounts().get("IN CORSO"), total);
-        String daAnalizzare = formatPercentCount(group.getStatusCounts().get("DA ANALIZZARE"), total);
+        String abandoned = formatPercentCount(group.getStatusCounts().get("ABBANDONATO"), total);
+        String inProgress = formatPercentCount(inProgressCount, total);
+        String toAnalyze = formatPercentCount(toAnalyzeCount, total);
 
-        cells.add(createTextCell(metodo));
+        cells.add(createTextCell(paymentMethod));
         cells.add(createTextCell(ok));
         cells.add(createTextCell(ko));
-        cells.add(createTextCell(abbandonato));
-        cells.add(createTextCell(inCorso));
-        cells.add(createTextCell(daAnalizzare));
+        cells.add(createTextCell(abandoned));
+        cells.add(createStyledCell(inProgress, (inProgressCount != null && inProgressCount > 0) ? "warning" : ""));
+        cells.add(createStyledCell(toAnalyze, (toAnalyzeCount != null && toAnalyzeCount > 0) ? "warning" : ""));
 
         return cells;
     }
