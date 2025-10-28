@@ -370,6 +370,58 @@ public class SlackDateRangeReportMessageUtils {
         return cell;
     }
 
+    /**
+     * Creates a styled table cell with bold text and optional emoji prefix.
+     *
+     * @param text      The cell content to display
+     * @param emojiName Optional emoji name to display before text (empty string for
+     *                  no emoji)
+     * @return Map representing a Slack rich text cell with bold formatting
+     */
+    private static Map<String, Object> createStyledCell(
+                                                        String text,
+                                                        String emojiName
+    ) {
+        Map<String, Object> style = new HashMap<>();
+        style.put("bold", true);
+
+        List<Map<String, Object>> elements = new ArrayList<>();
+
+        // add warning emoji for "IN CORSO" and "DA ANALIZZARE" columns
+        if (emojiName != null && !emojiName.isEmpty()) {
+            Map<String, Object> emojiObj = new HashMap<>();
+            emojiObj.put("type", "emoji");
+            emojiObj.put("name", emojiName);
+            elements.add(emojiObj);
+        }
+
+        Map<String, Object> textObj = new HashMap<>();
+        textObj.put("type", "text");
+        textObj.put("text", emojiName != null && !emojiName.isEmpty() ? " " + text : text);
+        textObj.put("style", style);
+        elements.add(textObj);
+
+        Map<String, Object> richTextSection = new HashMap<>();
+        richTextSection.put("type", "rich_text_section");
+        richTextSection.put(ELEMENTS, elements);
+
+        List<Map<String, Object>> richTextElements = new ArrayList<>();
+        richTextElements.add(richTextSection);
+
+        Map<String, Object> cell = new HashMap<>();
+        cell.put("type", "rich_text");
+        cell.put(ELEMENTS, richTextElements);
+
+        return cell;
+    }
+
+    /**
+     * Formats percentage and count with Italian locale (3 decimal places).
+     *
+     * @param count Status count
+     * @param total Total count
+     * @return Formatted string like "12,345% (123)" or "0,000% (0)" if null/zero
+     */
     private static String formatPercentCount(
                                              Integer count,
                                              int total
