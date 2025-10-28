@@ -347,6 +347,27 @@ public class SlackDateRangeReportMessageUtils {
     }
 
     /**
+     * Wraps elements in a Slack rich text cell structure.
+     *
+     * @param elements List of rich text elements (text, emoji, etc.)
+     * @return Map representing a Slack rich text cell
+     */
+    private static Map<String, Object> createRichTextCell(List<Map<String, Object>> elements) {
+        Map<String, Object> richTextSection = new HashMap<>();
+        richTextSection.put("type", "rich_text_section");
+        richTextSection.put(ELEMENTS, elements);
+
+        List<Map<String, Object>> richTextElements = new ArrayList<>();
+        richTextElements.add(richTextSection);
+
+        Map<String, Object> cell = new HashMap<>();
+        cell.put("type", "rich_text");
+        cell.put(ELEMENTS, richTextElements);
+
+        return cell;
+    }
+
+    /**
      * Creates a bold table cell without emoji.
      *
      * @param text Cell content to display in bold
@@ -364,18 +385,7 @@ public class SlackDateRangeReportMessageUtils {
         List<Map<String, Object>> elements = new ArrayList<>();
         elements.add(textObj);
 
-        Map<String, Object> richTextSection = new HashMap<>();
-        richTextSection.put("type", "rich_text_section");
-        richTextSection.put(ELEMENTS, elements);
-
-        List<Map<String, Object>> richTextElements = new ArrayList<>();
-        richTextElements.add(richTextSection);
-
-        Map<String, Object> cell = new HashMap<>();
-        cell.put("type", "rich_text");
-        cell.put(ELEMENTS, richTextElements);
-
-        return cell;
+        return createRichTextCell(elements);
     }
 
     /**
@@ -392,18 +402,7 @@ public class SlackDateRangeReportMessageUtils {
         List<Map<String, Object>> elements = new ArrayList<>();
         elements.add(textObj);
 
-        Map<String, Object> richTextSection = new HashMap<>();
-        richTextSection.put("type", "rich_text_section");
-        richTextSection.put(ELEMENTS, elements);
-
-        List<Map<String, Object>> richTextElements = new ArrayList<>();
-        richTextElements.add(richTextSection);
-
-        Map<String, Object> cell = new HashMap<>();
-        cell.put("type", "rich_text");
-        cell.put(ELEMENTS, richTextElements);
-
-        return cell;
+        return createRichTextCell(elements);
     }
 
     /**
@@ -437,18 +436,7 @@ public class SlackDateRangeReportMessageUtils {
         textObj.put("style", style);
         elements.add(textObj);
 
-        Map<String, Object> richTextSection = new HashMap<>();
-        richTextSection.put("type", "rich_text_section");
-        richTextSection.put(ELEMENTS, elements);
-
-        List<Map<String, Object>> richTextElements = new ArrayList<>();
-        richTextElements.add(richTextSection);
-
-        Map<String, Object> cell = new HashMap<>();
-        cell.put("type", "rich_text");
-        cell.put(ELEMENTS, richTextElements);
-
-        return cell;
+        return createRichTextCell(elements);
     }
 
     /**
