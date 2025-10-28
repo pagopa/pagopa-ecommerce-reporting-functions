@@ -422,4 +422,189 @@ class SlackDateRangeReportMessageUtilsTest {
 
         verify(mockLogger).info("Created {} Slack messages", 1);
     }
+
+    @Test
+    void shouldCreateInitialBlock() throws JsonProcessingException {
+        // given
+        LocalDate startDate = LocalDate.of(2023, 1, 1);
+        LocalDate endDate = LocalDate.of(2023, 1, 7);
+
+        // when
+        String[] messages = SlackDateRangeReportMessageUtils.createInitialBlock(startDate, endDate, mockLogger);
+
+        // then
+        assertNotNull(messages);
+        assertEquals(1, messages.length);
+
+        JsonNode root = OBJECT_MAPPER.readTree(messages[0]);
+        assertTrue(root.has("blocks"));
+        JsonNode blocks = root.get("blocks");
+        assertEquals(4, blocks.size(), "Expected header + image + description + divider");
+
+        verify(mockLogger).info("Created {} Slack messages", 1);
+    }
+
+    @Test
+    void shouldHandleNullCountsInDataRow() throws Exception {
+        // given
+        AggregatedStatusGroup group = new AggregatedStatusGroup(
+                "2025-09-16",
+                "clientA",
+                "pspX",
+                "CP",
+                List.of("OK", "KO", "ABBANDONATO")
+        );
+        // IN CORSO and DA ANALIZZARE are null (not initialized)
+        group.incrementStatus("OK", 10);
+
+        // when -> we use reflection to access private createDataRow method
+        Method method = SlackDateRangeReportMessageUtils.class
+                .getDeclaredMethod("createDataRow", AggregatedStatusGroup.class);
+        method.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> cells = (List<Map<String, Object>>) method.invoke(null, group);
+
+        // then - should create cells without emoji for null counts
+        assertNotNull(cells);
+        assertEquals(6, cells.size());
+    }
+
+    @Test
+    void shouldHandleZeroCountsInDataRow() throws Exception {
+        // given
+        AggregatedStatusGroup group = new AggregatedStatusGroup(
+                "2025-09-16",
+                "clientA",
+                "pspX",
+                "CP",
+                List.of("OK", "KO", "ABBANDONATO", "IN CORSO", "DA ANALIZZARE")
+        );
+        // IN CORSO and DA ANALIZZARE are 0
+        group.incrementStatus("OK", 10);
+        group.incrementStatus("KO", 5);
+
+        // when - use reflection to access private createDataRow method
+        Method method = SlackDateRangeReportMessageUtils.class
+                .getDeclaredMethod("createDataRow", AggregatedStatusGroup.class);
+        method.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> cells = (List<Map<String, Object>>) method.invoke(null, group);
+
+        // then - should create cells without emoji for zero counts
+        assertNotNull(cells);
+        assertEquals(6, cells.size());
+    }
+
+    @Test
+    void shouldCreateStyledCellWithNullEmoji() throws Exception {
+        // given
+        String text = "10,000% (10)";
+        String emojiName = null;
+
+        // when - use reflection to access private createStyledCell method
+        Method method = SlackDateRangeReportMessageUtils.class
+                .getDeclaredMethod("createStyledCell", String.class, String.class);
+        method.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> cell = (Map<String, Object>) method.invoke(null, text, emojiName);
+
+        // then
+        assertNotNull(cell);
+        assertEquals("rich_text", cell.get("type"));
+    }
+
+    @Test
+    void shouldCreateStyledCellWithEmptyEmoji() throws Exception {
+        // given
+        String text = "10,000% (10)";
+        String emojiName = "";
+
+        // when - use reflection to access private createStyledCell method
+        Method method = SlackDateRangeReportMessageUtils.class
+                .getDeclaredMethod("createStyledCell", String.class, String.class);
+        method.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> cell = (Map<String, Object>) method.invoke(null, text, emojiName);
+
+        // then
+        assertNotNull(cell);
+        assertEquals("rich_text", cell.get("type"));
+    }
+
+    @Test
+    void shouldCreateStyledCellWithEmoji() throws Exception {
+        // given
+        String text = "10,000% (10)";
+        String emojiName = "warning";
+
+        // when - use reflection to access private createStyledCell method
+        Method method = SlackDateRangeReportMessageUtils.class
+                .getDeclaredMethod("createStyledCell", String.class, String.class);
+        method.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> cell = (Map<String, Object>) method.invoke(null, text, emojiName);
+
+        // then
+        assertNotNull(cell);
+        assertEquals("rich_text", cell.get("type"));
+
+        // check emoji was added
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> elements = (List<Map<String, Object>>) cell.get("elements");
+        Map<String, Object> richTextSection = elements.get(0);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> sectionElements = (List<Map<String, Object>>) richTextSection.get("elements");
+
+        // first element should be emoji
+        assertEquals("emoji", sectionElements.get(0).get("type"));
+        assertEquals("warning", sectionElements.get(0).get("name"));
+    }
+
+    @Test
+    void shouldFormatPercentCountWithNullCount() throws Exception {
+        // given
+        Integer count = null;
+        int total = 100;
+
+        // when - use reflection to access private formatPercentCount method
+        Method method = SlackDateRangeReportMessageUtils.class
+                .getDeclaredMethod("formatPercentCount", Integer.class, int.class);
+        method.setAccessible(true);
+        String result = (String) method.invoke(null, count, total);
+
+        // then
+        assertEquals("0,000% (0)", result);
+    }
+
+    @Test
+    void shouldFormatPercentCountWithZeroTotal() throws Exception {
+        // given
+        Integer count = 10;
+        int total = 0;
+
+        // when - use reflection to access private formatPercentCount method
+        Method method = SlackDateRangeReportMessageUtils.class
+                .getDeclaredMethod("formatPercentCount", Integer.class, int.class);
+        method.setAccessible(true);
+        String result = (String) method.invoke(null, count, total);
+
+        // then
+        assertEquals("0,000% (0)", result);
+    }
+
+    @Test
+    void shouldFormatPercentCountWithValidValues() throws Exception {
+        // given
+        Integer count = 25;
+        int total = 100;
+
+        // when - use reflection to access private formatPercentCount method
+        Method method = SlackDateRangeReportMessageUtils.class
+                .getDeclaredMethod("formatPercentCount", Integer.class, int.class);
+        method.setAccessible(true);
+        String result = (String) method.invoke(null, count, total);
+
+        // then
+        assertEquals("25,000% (25)", result);
+    }
 }
