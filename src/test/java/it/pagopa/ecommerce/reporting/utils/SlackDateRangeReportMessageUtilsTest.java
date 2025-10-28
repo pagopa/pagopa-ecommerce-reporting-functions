@@ -37,67 +37,6 @@ class SlackDateRangeReportMessageUtilsTest {
     }
 
     @Test
-    void shouldFormatStatusDetailsCorrectly() {
-        // Given
-        Map<String, Integer> statusCounts = new LinkedHashMap<>();
-        statusCounts.put("ACTIVATED", 100);
-        statusCounts.put("NOTIFIED_OK", 80);
-        statusCounts.put("UNKNOWN_STATUS", 5);
-
-        // When
-        String result = SlackDateRangeReportMessageUtils.formatStatusDetails(statusCounts);
-
-        // Then
-        assertTrue(result.contains(":white_check_mark: *Attivate*: 100"));
-        assertTrue(result.contains(":tada: *Complete con notifica*: 80"));
-        assertTrue(result.contains(":black_circle: *UNKNOWN_STATUS*: 5"));
-    }
-
-    @Test
-    void shouldSortStatusKeysAlphabetically() {
-        // Given
-        Map<String, Integer> statusCounts = new HashMap<>();
-        statusCounts.put("CLOSED", 30);
-        statusCounts.put("ACTIVATED", 100);
-        statusCounts.put("EXPIRED", 20);
-
-        // When
-        String result = SlackDateRangeReportMessageUtils.formatStatusDetails(statusCounts);
-
-        // Then
-        int activatedIndex = result.indexOf("Attivate");
-        int closedIndex = result.indexOf("Chiuse");
-        int expiredIndex = result.indexOf("Scadute");
-
-        assertTrue(activatedIndex < closedIndex);
-        assertTrue(closedIndex < expiredIndex);
-    }
-
-    @Test
-    void shouldFormatKnownPaymentType() {
-        // Given
-        String paymentTypeCode = "CP";
-
-        // When
-        String result = SlackDateRangeReportMessageUtils.formatPaymentTypeCode(paymentTypeCode);
-
-        // Then
-        assertEquals("   :credit_card: *Carte*", result);
-    }
-
-    @Test
-    void shouldFormatUnknownPaymentType() {
-        // Given
-        String paymentTypeCode = "UNKNOWN_TYPE";
-
-        // When
-        String result = SlackDateRangeReportMessageUtils.formatPaymentTypeCode(paymentTypeCode);
-
-        // Then
-        assertEquals("   :moneybag: *UNKNOWN_TYPE*", result);
-    }
-
-    @Test
     void shouldFilterByClientIdAndSortByActivated() {
         // Given
         AggregatedStatusGroup group1 = new AggregatedStatusGroup(
@@ -242,63 +181,6 @@ class SlackDateRangeReportMessageUtilsTest {
 
         // Then
         assertEquals("divider", result.get("type"));
-    }
-
-    @Test
-    void shouldCreateCorrectGroupHeaderSection() {
-        // Given
-        AggregatedStatusGroup group = new AggregatedStatusGroup(
-                "2023-01-01",
-                "testClient",
-                "testPsp",
-                "CP",
-                Collections.emptyList()
-        );
-
-        // When
-        Map<String, Object> result = SlackDateRangeReportMessageUtils.createGroupHeaderSection(group);
-
-        // Then
-        assertEquals("section", result.get("type"));
-
-        @SuppressWarnings("unchecked")
-        Map<String, Object> textBlock = (Map<String, Object>) result.get("text");
-
-        assertEquals("mrkdwn", textBlock.get("type"));
-        String text = (String) textBlock.get("text");
-
-        assertTrue(text.contains("Client *testClient*"));
-        assertTrue(text.contains("PSP *testPsp*"));
-        assertTrue(text.contains("Carte"));
-    }
-
-    @Test
-    void shouldCreateCorrectStatusDetailsSection() {
-        // Given
-        AggregatedStatusGroup group = new AggregatedStatusGroup(
-                "2023-01-01",
-                "testClient",
-                "testPsp",
-                "CP",
-                Arrays.asList("ACTIVATED", "NOTIFIED_OK")
-        );
-        group.incrementStatus("ACTIVATED", 100);
-        group.incrementStatus("NOTIFIED_OK", 80);
-
-        // When
-        Map<String, Object> result = SlackDateRangeReportMessageUtils.createStatusDetailsSection(group);
-
-        // Then
-        assertEquals("section", result.get("type"));
-
-        @SuppressWarnings("unchecked")
-        Map<String, Object> textBlock = (Map<String, Object>) result.get("text");
-
-        assertEquals("mrkdwn", textBlock.get("type"));
-        String text = (String) textBlock.get("text");
-
-        assertTrue(text.contains("*Attivate*: 100"));
-        assertTrue(text.contains("*Complete con notifica*: 80"));
     }
 
     @Test

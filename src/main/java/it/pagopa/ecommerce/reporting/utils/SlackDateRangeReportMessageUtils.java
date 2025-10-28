@@ -69,6 +69,16 @@ public class SlackDateRangeReportMessageUtils {
         return messages.toArray(new String[0]);
     }
 
+    /**
+     * Creates the initial block with header, image, and description for the Slack
+     * report.
+     *
+     * @param startDate Report start date
+     * @param endDate   Report end date
+     * @param logger    Logger instance
+     * @return Array of formatted Slack messages in JSON format
+     * @throws JsonProcessingException If JSON conversion fails
+     */
     public static String[] createInitialBlock(
                                               LocalDate startDate,
                                               LocalDate endDate,
@@ -94,6 +104,11 @@ public class SlackDateRangeReportMessageUtils {
 
     /**
      * Creates an empty report message when no data is available.
+     *
+     * @param startDate Report start date
+     * @param endDate   Report end date
+     * @return JSON string representing empty report message
+     * @throws JsonProcessingException If JSON conversion fails
      */
     private static String createEmptyReportMessage(
                                                    LocalDate startDate,
@@ -125,7 +140,8 @@ public class SlackDateRangeReportMessageUtils {
      * payment type code.
      *
      * @param aggregatedGroups Groups to sort
-     * @return Sorted list of groups
+     * @param clientId         Client ID to filter by
+     * @return Sorted list of groups filtered by client ID
      */
     static List<AggregatedStatusGroup> sortAggregatedGroups(
                                                             List<AggregatedStatusGroup> aggregatedGroups,
@@ -157,66 +173,12 @@ public class SlackDateRangeReportMessageUtils {
     }
 
     /**
-     * Formats status details with proper translations and emojis.
+     * Creates a header block for the report with date range.
      *
-     * @param statusCounts Map of status counts
-     * @return Formatted status details string
+     * @param startDate Formatted start date
+     * @param endDate   Formatted end date
+     * @return Map representing header block
      */
-    static String formatStatusDetails(Map<String, Integer> statusCounts) {
-        if (statusCounts == null || statusCounts.isEmpty()) {
-            return "";
-        }
-
-        StringBuilder statusDetails = new StringBuilder();
-        List<String> sortedKeys = new ArrayList<>(statusCounts.keySet());
-        Collections.sort(sortedKeys);
-
-        for (String statusKey : sortedKeys) {
-            Integer count = statusCounts.get(statusKey);
-            if (count == null || count == 0) {
-                continue; // Skip zero counts
-            }
-
-            SlackMessageConstants.TranslationEntry entry = SlackMessageConstants.STATUS_TRANSLATIONS.getOrDefault(
-                    statusKey,
-                    new SlackMessageConstants.TranslationEntry(statusKey, SlackMessageConstants.DEFAULT_STATUS_EMOJI)
-            );
-
-            statusDetails.append("   ")
-                    .append(entry.emoji())
-                    .append(" *")
-                    .append(entry.translation())
-                    .append("*: ")
-                    .append(count)
-                    .append("\n\n");
-        }
-
-        return statusDetails.toString();
-    }
-
-    /**
-     * Formats payment type code with description and emoji.
-     *
-     * @param paymentTypeCode Payment type code
-     * @return Formatted payment type string
-     */
-    static String formatPaymentTypeCode(String paymentTypeCode) {
-        if (paymentTypeCode == null || paymentTypeCode.isEmpty()) {
-            paymentTypeCode = "GENERIC";
-        }
-
-        SlackMessageConstants.TranslationEntry entry = SlackMessageConstants.PAYMENT_TYPE_CODE.getOrDefault(
-                paymentTypeCode,
-                new SlackMessageConstants.TranslationEntry(
-                        paymentTypeCode,
-                        SlackMessageConstants.PAYMENT_TYPE_CODE.get("GENERIC").emoji()
-                )
-        );
-
-        return "   " + entry.emoji() + " *" + entry.translation() + "*";
-    }
-
-    // Block creation methods
     static Map<String, Object> createHeaderBlock(
                                                  String startDate,
                                                  String endDate
@@ -231,6 +193,13 @@ public class SlackDateRangeReportMessageUtils {
         );
     }
 
+    /**
+     * Creates a description block explaining the report.
+     *
+     * @param startDate Formatted start date
+     * @param endDate   Formatted end date
+     * @return Map representing description block
+     */
     static Map<String, Object> createHeaderDescriptionBlock(
                                                             String startDate,
                                                             String endDate
@@ -244,6 +213,11 @@ public class SlackDateRangeReportMessageUtils {
         );
     }
 
+    /**
+     * Creates an image block with PagoPA logo.
+     *
+     * @return Map representing image block
+     */
     static Map<String, Object> createImageBlock() {
         Map<String, Object> imageBlock = new HashMap<>();
         imageBlock.put("type", "image");
@@ -252,38 +226,17 @@ public class SlackDateRangeReportMessageUtils {
         return imageBlock;
     }
 
+    /**
+     * Creates a divider block for visual separation.
+     *
+     * @return Map representing divider block
+     */
     static Map<String, Object> createDivider() {
         Map<String, Object> divider = new HashMap<>();
         divider.put("type", "divider");
         return divider;
     }
 
-    static Map<String, Object> createGroupHeaderSection(AggregatedStatusGroup group) {
-        String clientId = group.getClientId() != null ? group.getClientId() : "Unknown";
-        String pspId = group.getPspId() != null ? group.getPspId() : "Unknown";
-        String paymentTypeCode = group.getPaymentTypeCode();
-
-        String text = SlackMessageConstants.CHART_EMOJI + " STATISTICHE" +
-                "\n\t\t| Client *" + clientId +
-                "* con PSP *" + pspId +
-                "* e pagato con " + formatPaymentTypeCode(paymentTypeCode);
-
-        return createTextBlock("section", "mrkdwn", text, false);
-    }
-
-    static Map<String, Object> createStatusDetailsSection(AggregatedStatusGroup group) {
-        String details = formatStatusDetails(group.getStatusCounts());
-        if (details.trim().isEmpty()) {
-            details = "Nessun dettaglio disponibile.";
-        }
-
-        return createTextBlock(
-                "section",
-                "mrkdwn",
-                details,
-                false
-        );
-    }
 
     // Helper method to create text blocks
     static Map<String, Object> createTextBlock(
