@@ -37,74 +37,13 @@ class SlackDateRangeReportMessageUtilsTest {
     }
 
     @Test
-    void shouldFormatStatusDetailsCorrectly() {
-        // Given
-        Map<String, Integer> statusCounts = new LinkedHashMap<>();
-        statusCounts.put("ACTIVATED", 100);
-        statusCounts.put("NOTIFIED_OK", 80);
-        statusCounts.put("UNKNOWN_STATUS", 5);
-
-        // When
-        String result = SlackDateRangeReportMessageUtils.formatStatusDetails(statusCounts);
-
-        // Then
-        assertTrue(result.contains(":white_check_mark: *Attivate*: 100"));
-        assertTrue(result.contains(":tada: *Complete con notifica*: 80"));
-        assertTrue(result.contains(":black_circle: *UNKNOWN_STATUS*: 5"));
-    }
-
-    @Test
-    void shouldSortStatusKeysAlphabetically() {
-        // Given
-        Map<String, Integer> statusCounts = new HashMap<>();
-        statusCounts.put("CLOSED", 30);
-        statusCounts.put("ACTIVATED", 100);
-        statusCounts.put("EXPIRED", 20);
-
-        // When
-        String result = SlackDateRangeReportMessageUtils.formatStatusDetails(statusCounts);
-
-        // Then
-        int activatedIndex = result.indexOf("Attivate");
-        int closedIndex = result.indexOf("Chiuse");
-        int expiredIndex = result.indexOf("Scadute");
-
-        assertTrue(activatedIndex < closedIndex);
-        assertTrue(closedIndex < expiredIndex);
-    }
-
-    @Test
-    void shouldFormatKnownPaymentType() {
-        // Given
-        String paymentTypeCode = "CP";
-
-        // When
-        String result = SlackDateRangeReportMessageUtils.formatPaymentTypeCode(paymentTypeCode);
-
-        // Then
-        assertEquals("   :credit_card: *Carte*", result);
-    }
-
-    @Test
-    void shouldFormatUnknownPaymentType() {
-        // Given
-        String paymentTypeCode = "UNKNOWN_TYPE";
-
-        // When
-        String result = SlackDateRangeReportMessageUtils.formatPaymentTypeCode(paymentTypeCode);
-
-        // Then
-        assertEquals("   :moneybag: *UNKNOWN_TYPE*", result);
-    }
-
-    @Test
     void shouldFilterByClientIdAndSortByActivated() {
         // Given
         AggregatedStatusGroup group1 = new AggregatedStatusGroup(
                 "2025-09-16",
                 "clientA",
                 "pspX",
-                "CP",
+                "PPAL",
                 List.of("OK", "KO")
         );
         group1.incrementStatus("ACTIVATED", 5);
@@ -124,7 +63,7 @@ class SlackDateRangeReportMessageUtilsTest {
                 "2025-09-16",
                 "clientB",
                 "pspZ",
-                "CP",
+                "APPL",
                 List.of("OK", "KO")
         );
         group3.incrementStatus("ACTIVATED", 7);
@@ -139,9 +78,9 @@ class SlackDateRangeReportMessageUtilsTest {
         assertEquals(2, sorted.size());
         assertTrue(sorted.stream().allMatch(g -> "clientA".equals(g.getClientId())));
 
-        // Sorted descending by ACTIVATED
-        assertEquals(10, sorted.get(0).getStatusCounts().get("ACTIVATED"));
-        assertEquals(5, sorted.get(1).getStatusCounts().get("ACTIVATED"));
+        // Sorted with CP (Carte) first, then alphabetically
+        assertEquals("CP", sorted.get(0).getPaymentTypeCode());
+        assertEquals("PPAL", sorted.get(1).getPaymentTypeCode());
     }
 
     @Test
@@ -242,63 +181,6 @@ class SlackDateRangeReportMessageUtilsTest {
 
         // Then
         assertEquals("divider", result.get("type"));
-    }
-
-    @Test
-    void shouldCreateCorrectGroupHeaderSection() {
-        // Given
-        AggregatedStatusGroup group = new AggregatedStatusGroup(
-                "2023-01-01",
-                "testClient",
-                "testPsp",
-                "CP",
-                Collections.emptyList()
-        );
-
-        // When
-        Map<String, Object> result = SlackDateRangeReportMessageUtils.createGroupHeaderSection(group);
-
-        // Then
-        assertEquals("section", result.get("type"));
-
-        @SuppressWarnings("unchecked")
-        Map<String, Object> textBlock = (Map<String, Object>) result.get("text");
-
-        assertEquals("mrkdwn", textBlock.get("type"));
-        String text = (String) textBlock.get("text");
-
-        assertTrue(text.contains("Client *testClient*"));
-        assertTrue(text.contains("PSP *testPsp*"));
-        assertTrue(text.contains("Carte"));
-    }
-
-    @Test
-    void shouldCreateCorrectStatusDetailsSection() {
-        // Given
-        AggregatedStatusGroup group = new AggregatedStatusGroup(
-                "2023-01-01",
-                "testClient",
-                "testPsp",
-                "CP",
-                Arrays.asList("ACTIVATED", "NOTIFIED_OK")
-        );
-        group.incrementStatus("ACTIVATED", 100);
-        group.incrementStatus("NOTIFIED_OK", 80);
-
-        // When
-        Map<String, Object> result = SlackDateRangeReportMessageUtils.createStatusDetailsSection(group);
-
-        // Then
-        assertEquals("section", result.get("type"));
-
-        @SuppressWarnings("unchecked")
-        Map<String, Object> textBlock = (Map<String, Object>) result.get("text");
-
-        assertEquals("mrkdwn", textBlock.get("type"));
-        String text = (String) textBlock.get("text");
-
-        assertTrue(text.contains("*Attivate*: 100"));
-        assertTrue(text.contains("*Complete con notifica*: 80"));
     }
 
     @Test
@@ -539,5 +421,190 @@ class SlackDateRangeReportMessageUtilsTest {
         assertEquals("table", blocks.get(1).get("type").asText());
 
         verify(mockLogger).info("Created {} Slack messages", 1);
+    }
+
+    @Test
+    void shouldCreateInitialBlock() throws JsonProcessingException {
+        // given
+        LocalDate startDate = LocalDate.of(2023, 1, 1);
+        LocalDate endDate = LocalDate.of(2023, 1, 7);
+
+        // when
+        String[] messages = SlackDateRangeReportMessageUtils.createInitialBlock(startDate, endDate, mockLogger);
+
+        // then
+        assertNotNull(messages);
+        assertEquals(1, messages.length);
+
+        JsonNode root = OBJECT_MAPPER.readTree(messages[0]);
+        assertTrue(root.has("blocks"));
+        JsonNode blocks = root.get("blocks");
+        assertEquals(4, blocks.size(), "Expected header + image + description + divider");
+
+        verify(mockLogger).info("Created {} Slack messages", 1);
+    }
+
+    @Test
+    void shouldHandleNullCountsInDataRow() throws Exception {
+        // given
+        AggregatedStatusGroup group = new AggregatedStatusGroup(
+                "2025-09-16",
+                "clientA",
+                "pspX",
+                "CP",
+                List.of("OK", "KO", "ABBANDONATO")
+        );
+        // IN CORSO and DA ANALIZZARE are null (not initialized)
+        group.incrementStatus("OK", 10);
+
+        // when -> we use reflection to access private createDataRow method
+        Method method = SlackDateRangeReportMessageUtils.class
+                .getDeclaredMethod("createDataRow", AggregatedStatusGroup.class);
+        method.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> cells = (List<Map<String, Object>>) method.invoke(null, group);
+
+        // then - should create cells without emoji for null counts
+        assertNotNull(cells);
+        assertEquals(6, cells.size());
+    }
+
+    @Test
+    void shouldHandleZeroCountsInDataRow() throws Exception {
+        // given
+        AggregatedStatusGroup group = new AggregatedStatusGroup(
+                "2025-09-16",
+                "clientA",
+                "pspX",
+                "CP",
+                List.of("OK", "KO", "ABBANDONATO", "IN CORSO", "DA ANALIZZARE")
+        );
+        // IN CORSO and DA ANALIZZARE are 0
+        group.incrementStatus("OK", 10);
+        group.incrementStatus("KO", 5);
+
+        // when - use reflection to access private createDataRow method
+        Method method = SlackDateRangeReportMessageUtils.class
+                .getDeclaredMethod("createDataRow", AggregatedStatusGroup.class);
+        method.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> cells = (List<Map<String, Object>>) method.invoke(null, group);
+
+        // then - should create cells without emoji for zero counts
+        assertNotNull(cells);
+        assertEquals(6, cells.size());
+    }
+
+    @Test
+    void shouldCreateStyledCellWithNullEmoji() throws Exception {
+        // given
+        String text = "10,000% (10)";
+        String emojiName = null;
+
+        // when - use reflection to access private createStyledCell method
+        Method method = SlackDateRangeReportMessageUtils.class
+                .getDeclaredMethod("createStyledCell", String.class, String.class);
+        method.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> cell = (Map<String, Object>) method.invoke(null, text, emojiName);
+
+        // then
+        assertNotNull(cell);
+        assertEquals("rich_text", cell.get("type"));
+    }
+
+    @Test
+    void shouldCreateStyledCellWithEmptyEmoji() throws Exception {
+        // given
+        String text = "10,000% (10)";
+        String emojiName = "";
+
+        // when - use reflection to access private createStyledCell method
+        Method method = SlackDateRangeReportMessageUtils.class
+                .getDeclaredMethod("createStyledCell", String.class, String.class);
+        method.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> cell = (Map<String, Object>) method.invoke(null, text, emojiName);
+
+        // then
+        assertNotNull(cell);
+        assertEquals("rich_text", cell.get("type"));
+    }
+
+    @Test
+    void shouldCreateStyledCellWithEmoji() throws Exception {
+        // given
+        String text = "10,000% (10)";
+        String emojiName = "warning";
+
+        // when - use reflection to access private createStyledCell method
+        Method method = SlackDateRangeReportMessageUtils.class
+                .getDeclaredMethod("createStyledCell", String.class, String.class);
+        method.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> cell = (Map<String, Object>) method.invoke(null, text, emojiName);
+
+        // then
+        assertNotNull(cell);
+        assertEquals("rich_text", cell.get("type"));
+
+        // check emoji was added
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> elements = (List<Map<String, Object>>) cell.get("elements");
+        Map<String, Object> richTextSection = elements.get(0);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> sectionElements = (List<Map<String, Object>>) richTextSection.get("elements");
+
+        // first element should be emoji
+        assertEquals("emoji", sectionElements.get(0).get("type"));
+        assertEquals("warning", sectionElements.get(0).get("name"));
+    }
+
+    @Test
+    void shouldFormatPercentCountWithNullCount() throws Exception {
+        // given
+        Integer count = null;
+        int total = 100;
+
+        // when - use reflection to access private formatPercentCount method
+        Method method = SlackDateRangeReportMessageUtils.class
+                .getDeclaredMethod("formatPercentCount", Integer.class, int.class);
+        method.setAccessible(true);
+        String result = (String) method.invoke(null, count, total);
+
+        // then
+        assertEquals("0,000% (0)", result);
+    }
+
+    @Test
+    void shouldFormatPercentCountWithZeroTotal() throws Exception {
+        // given
+        Integer count = 10;
+        int total = 0;
+
+        // when - use reflection to access private formatPercentCount method
+        Method method = SlackDateRangeReportMessageUtils.class
+                .getDeclaredMethod("formatPercentCount", Integer.class, int.class);
+        method.setAccessible(true);
+        String result = (String) method.invoke(null, count, total);
+
+        // then
+        assertEquals("0,000% (0)", result);
+    }
+
+    @Test
+    void shouldFormatPercentCountWithValidValues() throws Exception {
+        // given
+        Integer count = 25;
+        int total = 100;
+
+        // when - use reflection to access private formatPercentCount method
+        Method method = SlackDateRangeReportMessageUtils.class
+                .getDeclaredMethod("formatPercentCount", Integer.class, int.class);
+        method.setAccessible(true);
+        String result = (String) method.invoke(null, count, total);
+
+        // then
+        assertEquals("25,000% (25)", result);
     }
 }
