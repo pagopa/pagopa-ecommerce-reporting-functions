@@ -1,5 +1,8 @@
 # pagopa-ecommerce-reporting-functions
 
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=pagopa_pagopa-ecommerce-reporting-functions&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=pagopa_pagopa-ecommerce-reporting-functions)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=pagopa_pagopa-ecommerce-reporting-functions&metric=coverage)](https://sonarcloud.io/summary/new_code?id=pagopa_pagopa-ecommerce-reporting-functions)
+
 ## What is this?
 
 This is a PagoPA Azure functions that handles ecommerce transactions reporting.
