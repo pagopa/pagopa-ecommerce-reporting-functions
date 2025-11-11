@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>it.pagopa</groupId>
     <artifactId>pagopa-ecommerce-reporting-functions</artifactId>
-    <version>1.3.5</version>
+    <version>1.3.6</version>
     <packaging>jar</packaging>
     <name>pagopa-ecommerce-reporting-functions</name>
     <description>pagopa-ecommerce-reporting-functions</description>
