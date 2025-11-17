@@ -69,6 +69,16 @@ public class SlackDateRangeReportMessageUtils {
         return messages.toArray(new String[0]);
     }
 
+    /**
+     * Creates the initial block with header, image, and description for the Slack
+     * report.
+     *
+     * @param startDate Report start date
+     * @param endDate   Report end date
+     * @param logger    Logger instance
+     * @return Array of formatted Slack messages in JSON format
+     * @throws JsonProcessingException If JSON conversion fails
+     */
     public static String[] createInitialBlock(
                                               LocalDate startDate,
                                               LocalDate endDate,
@@ -94,6 +104,11 @@ public class SlackDateRangeReportMessageUtils {
 
     /**
      * Creates an empty report message when no data is available.
+     *
+     * @param startDate Report start date
+     * @param endDate   Report end date
+     * @return JSON string representing empty report message
+     * @throws JsonProcessingException If JSON conversion fails
      */
     private static String createEmptyReportMessage(
                                                    LocalDate startDate,
@@ -121,10 +136,12 @@ public class SlackDateRangeReportMessageUtils {
     }
 
     /**
-     * Sorts aggregated groups by ACTIVATED count in descending order.
+     * Sorts aggregated groups with "CP" (Carte) first, then alphabetically by
+     * payment type code.
      *
      * @param aggregatedGroups Groups to sort
-     * @return Sorted list of groups
+     * @param clientId         Client ID to filter by
+     * @return Sorted list of groups filtered by client ID
      */
     static List<AggregatedStatusGroup> sortAggregatedGroups(
                                                             List<AggregatedStatusGroup> aggregatedGroups,
@@ -136,10 +153,11 @@ public class SlackDateRangeReportMessageUtils {
                 .collect(Collectors.toList());
 
         sortedGroups.sort(
-                Comparator.comparing(
-                        group -> group.getStatusCounts().getOrDefault("ACTIVATED", 0),
-                        Comparator.reverseOrder()
-                )
+                Comparator.comparing((AggregatedStatusGroup group) -> {
+                    String paymentType = group.getPaymentTypeCode();
+                    // "CP" (Carte) first, then sort alphabetically
+                    return "CP".equals(paymentType) ? "0" : "1" + paymentType;
+                })
         );
         return sortedGroups;
     }
@@ -155,66 +173,12 @@ public class SlackDateRangeReportMessageUtils {
     }
 
     /**
-     * Formats status details with proper translations and emojis.
+     * Creates a header block for the report with date range.
      *
-     * @param statusCounts Map of status counts
-     * @return Formatted status details string
+     * @param startDate Formatted start date
+     * @param endDate   Formatted end date
+     * @return Map representing header block
      */
-    static String formatStatusDetails(Map<String, Integer> statusCounts) {
-        if (statusCounts == null || statusCounts.isEmpty()) {
-            return "";
-        }
-
-        StringBuilder statusDetails = new StringBuilder();
-        List<String> sortedKeys = new ArrayList<>(statusCounts.keySet());
-        Collections.sort(sortedKeys);
-
-        for (String statusKey : sortedKeys) {
-            Integer count = statusCounts.get(statusKey);
-            if (count == null || count == 0) {
-                continue; // Skip zero counts
-            }
-
-            SlackMessageConstants.TranslationEntry entry = SlackMessageConstants.STATUS_TRANSLATIONS.getOrDefault(
-                    statusKey,
-                    new SlackMessageConstants.TranslationEntry(statusKey, SlackMessageConstants.DEFAULT_STATUS_EMOJI)
-            );
-
-            statusDetails.append("   ")
-                    .append(entry.emoji())
-                    .append(" *")
-                    .append(entry.translation())
-                    .append("*: ")
-                    .append(count)
-                    .append("\n\n");
-        }
-
-        return statusDetails.toString();
-    }
-
-    /**
-     * Formats payment type code with description and emoji.
-     *
-     * @param paymentTypeCode Payment type code
-     * @return Formatted payment type string
-     */
-    static String formatPaymentTypeCode(String paymentTypeCode) {
-        if (paymentTypeCode == null || paymentTypeCode.isEmpty()) {
-            paymentTypeCode = "GENERIC";
-        }
-
-        SlackMessageConstants.TranslationEntry entry = SlackMessageConstants.PAYMENT_TYPE_CODE.getOrDefault(
-                paymentTypeCode,
-                new SlackMessageConstants.TranslationEntry(
-                        paymentTypeCode,
-                        SlackMessageConstants.PAYMENT_TYPE_CODE.get("GENERIC").emoji()
-                )
-        );
-
-        return "   " + entry.emoji() + " *" + entry.translation() + "*";
-    }
-
-    // Block creation methods
     static Map<String, Object> createHeaderBlock(
                                                  String startDate,
                                                  String endDate
@@ -229,6 +193,13 @@ public class SlackDateRangeReportMessageUtils {
         );
     }
 
+    /**
+     * Creates a description block explaining the report.
+     *
+     * @param startDate Formatted start date
+     * @param endDate   Formatted end date
+     * @return Map representing description block
+     */
     static Map<String, Object> createHeaderDescriptionBlock(
                                                             String startDate,
                                                             String endDate
@@ -236,12 +207,17 @@ public class SlackDateRangeReportMessageUtils {
         return createTextBlock(
                 "section",
                 PLAIN_TEXT,
-                "Di seguito il report suddiviso per Client, PSP e metodo pagamento di pagamento per l'intervallo di tempo dal "
+                "Di seguito il report suddiviso per client e metodo di pagamento per l'intervallo di tempo dal "
                         + startDate + " al " + endDate,
                 true
         );
     }
 
+    /**
+     * Creates an image block with PagoPA logo.
+     *
+     * @return Map representing image block
+     */
     static Map<String, Object> createImageBlock() {
         Map<String, Object> imageBlock = new HashMap<>();
         imageBlock.put("type", "image");
@@ -250,40 +226,26 @@ public class SlackDateRangeReportMessageUtils {
         return imageBlock;
     }
 
+    /**
+     * Creates a divider block for visual separation.
+     *
+     * @return Map representing divider block
+     */
     static Map<String, Object> createDivider() {
         Map<String, Object> divider = new HashMap<>();
         divider.put("type", "divider");
         return divider;
     }
 
-    static Map<String, Object> createGroupHeaderSection(AggregatedStatusGroup group) {
-        String clientId = group.getClientId() != null ? group.getClientId() : "Unknown";
-        String pspId = group.getPspId() != null ? group.getPspId() : "Unknown";
-        String paymentTypeCode = group.getPaymentTypeCode();
-
-        String text = SlackMessageConstants.CHART_EMOJI + " STATISTICHE" +
-                "\n\t\t| Client *" + clientId +
-                "* con PSP *" + pspId +
-                "* e pagato con " + formatPaymentTypeCode(paymentTypeCode);
-
-        return createTextBlock("section", "mrkdwn", text, false);
-    }
-
-    static Map<String, Object> createStatusDetailsSection(AggregatedStatusGroup group) {
-        String details = formatStatusDetails(group.getStatusCounts());
-        if (details.trim().isEmpty()) {
-            details = "Nessun dettaglio disponibile.";
-        }
-
-        return createTextBlock(
-                "section",
-                "mrkdwn",
-                details,
-                false
-        );
-    }
-
-    // Helper method to create text blocks
+    /**
+     * Creates a text block with specified formatting.
+     *
+     * @param blockType Block type (e.g., "section", "header")
+     * @param textType  Text type (e.g., "plain_text", "mrkdwn")
+     * @param content   Text content to display
+     * @param emoji     Whether to enable emoji rendering
+     * @return Map representing text block, or null if content is empty
+     */
     static Map<String, Object> createTextBlock(
                                                String blockType,
                                                String textType,
@@ -310,6 +272,12 @@ public class SlackDateRangeReportMessageUtils {
         return block;
     }
 
+    /**
+     * Creates table blocks with header and data rows.
+     *
+     * @param groups List of aggregated status groups
+     * @return List of table block maps
+     */
     static List<Map<String, Object>> createTableBlocks(List<AggregatedStatusGroup> groups) {
         List<Map<String, Object>> blocks = new ArrayList<>();
 
@@ -331,6 +299,11 @@ public class SlackDateRangeReportMessageUtils {
         return blocks;
     }
 
+    /**
+     * Creates table header row with column labels.
+     *
+     * @return List of header cell maps
+     */
     private static List<Map<String, Object>> createHeaderRow() {
         List<Map<String, Object>> headerCells = new ArrayList<>();
 
@@ -342,28 +315,64 @@ public class SlackDateRangeReportMessageUtils {
         return headerCells;
     }
 
+    /**
+     * Creates table data row with status percentages and counts.
+     *
+     * @param group Aggregated status group
+     * @return List of data cell maps
+     */
     private static List<Map<String, Object>> createDataRow(AggregatedStatusGroup group) {
         List<Map<String, Object>> cells = new ArrayList<>();
 
-        String metodo = group.getPaymentTypeCode();
+        String paymentMethod = group.getPaymentTypeCode();
         int total = group.getStatusCounts().values().stream().mapToInt(Integer::intValue).sum();
+
+        Integer inProgressCount = group.getStatusCounts().get("IN CORSO");
+        Integer toAnalyzeCount = group.getStatusCounts().get("DA ANALIZZARE");
 
         String ok = formatPercentCount(group.getStatusCounts().get("OK"), total);
         String ko = formatPercentCount(group.getStatusCounts().get("KO"), total);
-        String abbandonato = formatPercentCount(group.getStatusCounts().get("ABBANDONATO"), total);
-        String inCorso = formatPercentCount(group.getStatusCounts().get("IN CORSO"), total);
-        String daAnalizzare = formatPercentCount(group.getStatusCounts().get("DA ANALIZZARE"), total);
+        String abandoned = formatPercentCount(group.getStatusCounts().get("ABBANDONATO"), total);
+        String inProgress = formatPercentCount(inProgressCount, total);
+        String toAnalyze = formatPercentCount(toAnalyzeCount, total);
 
-        cells.add(createTextCell(metodo));
+        cells.add(createTextCell(paymentMethod));
         cells.add(createTextCell(ok));
         cells.add(createTextCell(ko));
-        cells.add(createTextCell(abbandonato));
-        cells.add(createTextCell(inCorso));
-        cells.add(createTextCell(daAnalizzare));
+        cells.add(createTextCell(abandoned));
+        cells.add(createStyledCell(inProgress, (inProgressCount != null && inProgressCount > 0) ? "warning" : ""));
+        cells.add(createStyledCell(toAnalyze, (toAnalyzeCount != null && toAnalyzeCount > 0) ? "warning" : ""));
 
         return cells;
     }
 
+    /**
+     * Wraps elements in a Slack rich text cell structure.
+     *
+     * @param elements List of rich text elements (text, emoji, etc.)
+     * @return Map representing a Slack rich text cell
+     */
+    private static Map<String, Object> createRichTextCell(List<Map<String, Object>> elements) {
+        Map<String, Object> richTextSection = new HashMap<>();
+        richTextSection.put("type", "rich_text_section");
+        richTextSection.put(ELEMENTS, elements);
+
+        List<Map<String, Object>> richTextElements = new ArrayList<>();
+        richTextElements.add(richTextSection);
+
+        Map<String, Object> cell = new HashMap<>();
+        cell.put("type", "rich_text");
+        cell.put(ELEMENTS, richTextElements);
+
+        return cell;
+    }
+
+    /**
+     * Creates a bold table cell without emoji.
+     *
+     * @param text Cell content to display in bold
+     * @return Map representing bold table cell
+     */
     private static Map<String, Object> createBoldCell(String text) {
         Map<String, Object> style = new HashMap<>();
         style.put("bold", true);
@@ -376,20 +385,15 @@ public class SlackDateRangeReportMessageUtils {
         List<Map<String, Object>> elements = new ArrayList<>();
         elements.add(textObj);
 
-        Map<String, Object> richTextSection = new HashMap<>();
-        richTextSection.put("type", "rich_text_section");
-        richTextSection.put(ELEMENTS, elements);
-
-        List<Map<String, Object>> richTextElements = new ArrayList<>();
-        richTextElements.add(richTextSection);
-
-        Map<String, Object> cell = new HashMap<>();
-        cell.put("type", "rich_text");
-        cell.put(ELEMENTS, richTextElements);
-
-        return cell;
+        return createRichTextCell(elements);
     }
 
+    /**
+     * Creates a plain table cell without formatting.
+     *
+     * @param text Cell content to display
+     * @return Map representing plain table cell
+     */
     private static Map<String, Object> createTextCell(String text) {
         Map<String, Object> textObj = new HashMap<>();
         textObj.put("type", "text");
@@ -398,27 +402,57 @@ public class SlackDateRangeReportMessageUtils {
         List<Map<String, Object>> elements = new ArrayList<>();
         elements.add(textObj);
 
-        Map<String, Object> richTextSection = new HashMap<>();
-        richTextSection.put("type", "rich_text_section");
-        richTextSection.put(ELEMENTS, elements);
-
-        List<Map<String, Object>> richTextElements = new ArrayList<>();
-        richTextElements.add(richTextSection);
-
-        Map<String, Object> cell = new HashMap<>();
-        cell.put("type", "rich_text");
-        cell.put(ELEMENTS, richTextElements);
-
-        return cell;
+        return createRichTextCell(elements);
     }
 
+    /**
+     * Creates a styled table cell with bold text and optional emoji prefix.
+     *
+     * @param text      The cell content to display
+     * @param emojiName Optional emoji name to display before text (empty string for
+     *                  no emoji)
+     * @return Map representing a Slack rich text cell with bold formatting
+     */
+    private static Map<String, Object> createStyledCell(
+                                                        String text,
+                                                        String emojiName
+    ) {
+        Map<String, Object> style = new HashMap<>();
+        style.put("bold", true);
+
+        List<Map<String, Object>> elements = new ArrayList<>();
+
+        // add warning emoji for "IN CORSO" and "DA ANALIZZARE" columns
+        if (emojiName != null && !emojiName.isEmpty()) {
+            Map<String, Object> emojiObj = new HashMap<>();
+            emojiObj.put("type", "emoji");
+            emojiObj.put("name", emojiName);
+            elements.add(emojiObj);
+        }
+
+        Map<String, Object> textObj = new HashMap<>();
+        textObj.put("type", "text");
+        textObj.put("text", emojiName != null && !emojiName.isEmpty() ? " " + text : text);
+        textObj.put("style", style);
+        elements.add(textObj);
+
+        return createRichTextCell(elements);
+    }
+
+    /**
+     * Formats percentage and count with Italian locale (3 decimal places).
+     *
+     * @param count Status count
+     * @param total Total count
+     * @return Formatted string like "12,345% (123)" or "0,000% (0)" if null/zero
+     */
     private static String formatPercentCount(
                                              Integer count,
                                              int total
     ) {
         if (count == null || total == 0)
-            return "0% (0)";
-        int percent = (int) Math.round((count * 100.0) / total);
-        return percent + "% (" + count + ")";
+            return "0,000% (0)";
+        double percent = (count * 100.0) / total;
+        return String.format(Locale.ITALIAN, "%.3f%% (%d)", percent, count);
     }
 }
