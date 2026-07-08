@@ -1,5 +1,6 @@
 package it.pagopa.ecommerce.reporting.functions;
 
+import com.azure.core.util.SharedExecutorService;
 import com.microsoft.azure.functions.ExecutionContext;
 import it.pagopa.ecommerce.reporting.clients.SlackWebhookClient;
 import it.pagopa.ecommerce.reporting.services.TransactionStatusAggregationService;
@@ -127,9 +128,9 @@ class SlackReportingTimerTriggeredTest {
                     }
             );
 
-            try (MockedStatic<Executors> executorsMock = Mockito.mockStatic(Executors.class)) {
-                ScheduledExecutorService mockScheduler = mock(ScheduledExecutorService.class);
-                executorsMock.when(Executors::newSingleThreadScheduledExecutor).thenReturn(mockScheduler);
+            try (MockedStatic<SharedExecutorService> executorsMock = Mockito.mockStatic(SharedExecutorService.class)) {
+                SharedExecutorService mockScheduler = mock(SharedExecutorService.class);
+                executorsMock.when(SharedExecutorService::getInstance).thenReturn(mockScheduler);
 
                 doAnswer(invocation -> {
                     Runnable task = invocation.getArgument(0);
@@ -221,9 +222,9 @@ class SlackReportingTimerTriggeredTest {
                     }
             );
 
-            try (MockedStatic<Executors> executorsMock = Mockito.mockStatic(Executors.class)) {
-                ScheduledExecutorService mockScheduler = mock(ScheduledExecutorService.class);
-                executorsMock.when(Executors::newSingleThreadScheduledExecutor).thenReturn(mockScheduler);
+            try (MockedStatic<SharedExecutorService> executorsMock = Mockito.mockStatic(SharedExecutorService.class)) {
+                SharedExecutorService mockScheduler = mock(SharedExecutorService.class);
+                executorsMock.when(SharedExecutorService::getInstance).thenReturn(mockScheduler);
 
                 doAnswer(invocation -> {
                     Runnable task = invocation.getArgument(0);
@@ -323,9 +324,9 @@ class SlackReportingTimerTriggeredTest {
                     }
             );
 
-            try (MockedStatic<Executors> executorsMock = Mockito.mockStatic(Executors.class)) {
-                ScheduledExecutorService mockScheduler = mock(ScheduledExecutorService.class);
-                executorsMock.when(Executors::newSingleThreadScheduledExecutor).thenReturn(mockScheduler);
+            try (MockedStatic<SharedExecutorService> executorsMock = Mockito.mockStatic(SharedExecutorService.class)) {
+                SharedExecutorService mockScheduler = mock(SharedExecutorService.class);
+                executorsMock.when(SharedExecutorService::getInstance).thenReturn(mockScheduler);
 
                 ArgumentCaptor<Long> delayCaptor = ArgumentCaptor.forClass(Long.class);
 
