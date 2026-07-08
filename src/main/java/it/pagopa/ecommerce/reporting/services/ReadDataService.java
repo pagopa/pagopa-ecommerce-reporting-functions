@@ -5,11 +5,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import it.pagopa.ecommerce.reporting.clients.EcommerceHelpdeskServiceClient;
 import it.pagopa.ecommerce.reporting.utils.MapParametersUtils;
 
-import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
