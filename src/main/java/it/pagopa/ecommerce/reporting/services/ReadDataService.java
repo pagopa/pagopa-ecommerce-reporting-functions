@@ -54,40 +54,40 @@ public class ReadDataService {
         AtomicInteger index = new AtomicInteger(0);
         logger.info("Start read and write");
         ScheduledExecutorService scheduledExecutorService = SharedExecutorService.getInstance();
-            paymentTypeCodeList.forEach(
-                    paymentMethodTypeCode -> pspList.get(paymentMethodTypeCode).forEach(pspId -> {
+        paymentTypeCodeList.forEach(
+                paymentMethodTypeCode -> pspList.get(paymentMethodTypeCode).forEach(pspId -> {
 
-                                index.getAndIncrement();
-                                TimerTask task = new TimerTask() {
+                    index.getAndIncrement();
+                    TimerTask task = new TimerTask() {
 
-                                    @Override
-                                    public void run() {
+                        @Override
+                        public void run() {
 
-                                        JsonNode node = ecommerceHelpdeskServiceClient.fetchTransactionMetrics(
-                                                clientId,
-                                                pspId,
-                                                paymentMethodTypeCode,
-                                                startDateTime,
-                                                endDateTime
-                                        );
-                                        logger.info("[LOGGER] Node result " + node);
-                                        writeDataService
-                                                .writeStateMetricsInTableStorage(
-                                                        node,
-                                                        logger,
-                                                        clientId,
-                                                        paymentMethodTypeCode,
-                                                        pspId
-                                                );
+                            JsonNode node = ecommerceHelpdeskServiceClient.fetchTransactionMetrics(
+                                    clientId,
+                                    pspId,
+                                    paymentMethodTypeCode,
+                                    startDateTime,
+                                    endDateTime
+                            );
+                            logger.info("[LOGGER] Node result " + node);
+                            writeDataService
+                                    .writeStateMetricsInTableStorage(
+                                            node,
+                                            logger,
+                                            clientId,
+                                            paymentMethodTypeCode,
+                                            pspId
+                                    );
 
-                                    }
-                                };
-                                scheduledExecutorService.schedule(task, index.get(), TimeUnit.SECONDS);
+                        }
+                    };
+                    scheduledExecutorService.schedule(task, index.get(), TimeUnit.SECONDS);
 
-                            }
+                }
 
-                    )
-            );
+                )
+        );
     }
 
     private EcommerceHelpdeskServiceClient getEcommerceHelpdeskServiceClient(Logger logger) {
