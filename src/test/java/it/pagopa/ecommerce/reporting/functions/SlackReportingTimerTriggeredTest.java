@@ -262,9 +262,9 @@ class SlackReportingTimerTriggeredTest {
                 mockSlackWebhookClient
         );
 
-        try (MockedStatic<Executors> executorsMock = Mockito.mockStatic(Executors.class)) {
-            ScheduledExecutorService mockScheduler = mock(ScheduledExecutorService.class);
-            executorsMock.when(Executors::newSingleThreadScheduledExecutor).thenReturn(mockScheduler);
+        try (MockedStatic<SharedExecutorService> executorsMock = Mockito.mockStatic(SharedExecutorService.class)) {
+            SharedExecutorService mockScheduler = mock(SharedExecutorService.class);
+            executorsMock.when(SharedExecutorService::getInstance).thenReturn(mockScheduler);
 
             assertThrows(RuntimeException.class, () -> function.run("timerInfo", mockContext));
 
