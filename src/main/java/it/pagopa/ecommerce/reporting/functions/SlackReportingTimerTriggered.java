@@ -1,7 +1,7 @@
 package it.pagopa.ecommerce.reporting.functions;
 
+import com.azure.core.util.SharedExecutorService;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.microsoft.azure.functions.*;
 import com.microsoft.azure.functions.annotation.FunctionName;
 import com.microsoft.azure.functions.annotation.TimerTrigger;
@@ -16,7 +16,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.TimerTask;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -88,7 +87,7 @@ public class SlackReportingTimerTriggered {
 
         logger.info("Sending {} table-based messages to Slack", reportMessages.size());
 
-        ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+        ScheduledExecutorService scheduledExecutorService = SharedExecutorService.getInstance();
         AtomicInteger index = new AtomicInteger(0);
         String[] initialBlock = SlackDateRangeReportMessageUtils.createInitialBlock(startDate, endDate, logger);
         for (String block : initialBlock) {

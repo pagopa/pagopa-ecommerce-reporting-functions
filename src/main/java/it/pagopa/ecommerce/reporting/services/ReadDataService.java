@@ -1,12 +1,12 @@
 package it.pagopa.ecommerce.reporting.services;
 
+import com.azure.core.util.SharedExecutorService;
 import com.fasterxml.jackson.databind.JsonNode;
 import it.pagopa.ecommerce.reporting.clients.EcommerceHelpdeskServiceClient;
 import it.pagopa.ecommerce.reporting.utils.MapParametersUtils;
 
 import java.time.OffsetDateTime;
 import java.util.*;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -50,7 +50,7 @@ public class ReadDataService {
         OffsetDateTime endDateTime = startDateTime.plusHours(1).minusNanos(1);
         AtomicInteger index = new AtomicInteger(0);
         logger.info("Start read and write");
-        ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+        ScheduledExecutorService scheduledExecutorService = SharedExecutorService.getInstance();
         paymentTypeCodeList.forEach(
                 paymentMethodTypeCode -> pspList.get(paymentMethodTypeCode).forEach(pspId -> {
 
