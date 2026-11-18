@@ -14,7 +14,8 @@ RUN cd /src/java-function-app && \
 FROM mcr.microsoft.com/azure-functions/java:4-java$JAVA_VERSION
 
 ENV AzureWebJobsScriptRoot=/home/site/wwwroot \
-    AzureFunctionsJobHost__Logging__Console__IsEnabled=true
+    AzureFunctionsJobHost__Logging__Console__IsEnabled=true \
+    JAVA_OPTS="-XX:-UseBASE64Intrinsics -XX:UseAVX=2"
 
 EXPOSE 80
 COPY --from=installer-env ["/home/site/wwwroot", "/home/site/wwwroot"]
