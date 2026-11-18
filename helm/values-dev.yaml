@@ -68,6 +68,7 @@ microservice-chart:
       maxSurge: 1
       maxUnavailable: 0
   envConfig:
+    JAVA_OPTS: "-XX:-UseBASE64Intrinsics"
     ASPNETCORE_URLS: "http://*:8080"
     FUNCTIONS_SECRETS_PATH: "/tmp/secrets"
     WEBSITE_SITE_NAME: "pagopaecommercereportingfunctions"
